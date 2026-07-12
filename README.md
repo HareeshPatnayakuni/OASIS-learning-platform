@@ -22,12 +22,20 @@ oasis-platform/
 
 ## Project status
 
-**Module 1 — Planning & Architecture: v1.1, refined per review, frozen
-pending your final approval.** No application code has been written yet, by
-design — this module exists to lock down requirements, architecture,
-database design, API contracts, and the deployment story *before* a single
-line of backend/frontend code is written, so later modules never contradict
-earlier decisions.
+**Module 1 (v1.1) and Module 2 are both approved and FROZEN — together the
+source of truth for every module going forward.**
+
+Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
+real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
+registration, login, JWT auth, password hashing, forgot password, email
+verification, RBAC middleware, Swagger docs, structured logging,
+validation, error handling, and 77 passing unit tests — then went through a
+pre-freeze security verification pass (refresh-token hashing, password
+policy, rate limiting, production CORS safety, separate JWT secrets,
+request size limits, fail-fast env validation, a Swagger on/off switch,
+`/health`) that caught and fixed three real gaps. See
+[`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) for the complete
+write-up.
 
 ## Where to start reading
 
@@ -40,6 +48,7 @@ earlier decisions.
 | [`docs/04-api-design.md`](docs/04-api-design.md) | REST API design, resource list, conventions, versioning |
 | [`docs/05-roadmap-and-milestones.md`](docs/05-roadmap-and-milestones.md) | Module-by-module build plan from here to launch |
 | [`docs/06-deployment-and-docker.md`](docs/06-deployment-and-docker.md) | Deployment strategy, Docker setup, environment variables |
+| [`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) | Module 2 design decisions, schema addendum, and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -62,16 +71,14 @@ without a rewrite.
 
 ## Getting Started
 
-These instructions describe the target workflow from Module 2 onward — the
-backend/frontend source doesn't exist yet in Module 1, but this is exactly
-how a new contributor will bring the project up once it does.
-
 ### Prerequisites
 - Node.js 20 LTS
-- Docker & Docker Compose
+- Docker & Docker Compose (for local Postgres — or point `DATABASE_URL` at
+  any Postgres 16+ instance you already have)
 - A Cloudflare account with **two** R2 buckets created (one private, one
-  public/CDN-fronted) — see `docs/06-deployment-and-docker.md`
-- A Razorpay account (test-mode keys are enough for local development)
+  public/CDN-fronted) — see `docs/06-deployment-and-docker.md` (not needed
+  to run Auth-only Module 2 locally; R2 isn't touched until Module 3/4)
+- A Razorpay account (test-mode keys — not needed until Module 7)
 
 ### 1. Clone and install
 ```bash
@@ -89,34 +96,35 @@ cp frontend/.env.example frontend/.env.local
 Fill in real values — see the full reference tables in
 `docs/06-deployment-and-docker.md §6`. Never commit either filled-in file.
 
-### 3. Start Postgres + the backend (Docker)
+### 3. Start Postgres
 ```bash
 cd docker
-docker compose up --build
+docker compose up postgres -d
 ```
+(Or point `DATABASE_URL` in `backend/.env` at any Postgres 16+ you already
+have — the backend itself is easiest to run with `npm run dev`, not
+Dockerized, during active development; see `docs/06-deployment-and-docker.md §2`.)
 
 ### 4. Run database migrations & seed data
 ```bash
 cd backend
-npx prisma migrate dev --schema=../database/schema.prisma
-npx ts-node ../database/seed.ts
+npm run prisma:migrate:dev -- --name init
+npm run seed
 ```
 The seed script populates the initial Boards (CBSE, ICSE, State Board),
 Class Grades (4–10), Subjects (Mathematics, Science, English), and a
 placeholder `AcademySettings` row.
 
-### 5. Run the frontend
+### 5. Run the backend and frontend
 ```bash
-cd frontend
-npm run dev
+cd backend && npm run dev     # http://localhost:4000, docs at /api/v1/docs
+cd frontend && npm run dev    # http://localhost:3000 (separate terminal)
 ```
-The frontend runs locally (not Dockerized — see
-`docs/06-deployment-and-docker.md §2` for why) and talks to the Dockerized
-backend via `NEXT_PUBLIC_API_BASE_URL`.
 
 ### 6. Verify
 - Backend health check: `curl http://localhost:4000/health`
-- API docs (once Module 2 scaffolds Swagger): `http://localhost:4000/api/v1/docs`
+- API docs: `http://localhost:4000/api/v1/docs`
+- Run the test suite: `cd backend && npm test` (77 tests)
 - Frontend: `http://localhost:3000`
 
 ---
@@ -202,9 +210,9 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Module 1 (v1.1) incorporates the refinements from your review: multi-board
-support, course/lecture status, SEO slugs, soft deletes, a media strategy,
-Notifications, Enquiries, Testimonials, Settings, an explicit
-backend-only-business-logic invariant, and expanded observability. Once
-you confirm this is frozen, Module 2 begins: repository scaffolding, Prisma
-migrations against a real Postgres instance, and the authentication module.
+Modules 1 and 2 are both frozen and are now the project's permanent
+architecture — future modules build on the `AuthRepository` pattern, the
+middleware pipeline, the error envelope, and the env-validation approach
+established here, rather than redesigning them. Module 3 is next: Board/
+Class/Subject catalog endpoints and Course/Chapter/Module/Lecture/Note/Quiz
+CRUD, per `docs/05-roadmap-and-milestones.md`.

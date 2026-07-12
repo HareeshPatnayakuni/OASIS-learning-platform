@@ -1,0 +1,16 @@
+# Applies to any `docker build` run from the repository root (see
+# docker/backend.Dockerfile's context note). Keeps the build context small —
+# without this, frontend/node_modules alone would add hundreds of MB to
+# every backend image build for files the backend image never uses.
+
+**/node_modules
+**/dist
+**/coverage
+**/.next
+**/.git
+**/.env
+**/.env.local
+**/*.log
+frontend/
+docs/
+.DS_Store

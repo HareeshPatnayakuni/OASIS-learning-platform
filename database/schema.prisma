@@ -1,0 +1,613 @@
+// OASIS — Database Schema (Module 1 Deliverable, v1.1 — post-refinement)
+// This schema is a design artifact for review. No migration has been run yet;
+// that begins in Module 2 once this file is approved.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+// Course-level publish state.
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Lecture-level visibility state — intentionally distinct from CourseStatus:
+// a published course can still have individual lectures held back (DRAFT) or
+// temporarily pulled from view (HIDDEN) without touching the course itself.
+enum LectureStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum MediaPurpose {
+  COURSE_THUMBNAIL
+  TEACHER_AVATAR
+  TESTIMONIAL_PHOTO
+  ACADEMY_LOGO
+  GENERIC
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  PAYMENT
+  LIVE_CLASS_REMINDER
+  SYSTEM
+}
+
+enum EnquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  SPAM
+}
+
+// ─────────────────────────────────────────────────────────────
+// Identity & Access
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         UserRole
+  phone        String?
+  avatarId     String?
+  avatar       Media?    @relation("UserAvatar", fields: [avatarId], references: [id])
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // ── Module 2 addendum (see docs/07-module-2-notes.md) ──────────────────
+  // emailVerifiedAt: null until the user completes email verification.
+  // classGradeId/boardId: self-reported at registration per FR-AUTH-1
+  // ("target class/board"), which v1.1's frozen schema didn't yet wire up.
+  // Both nullable — informational/personalization only, never used to gate
+  // which courses a student can browse or purchase.
+  emailVerifiedAt DateTime?
+  classGradeId    String?
+  classGrade      ClassGrade? @relation(fields: [classGradeId], references: [id])
+  boardId         String?
+  board           Board?      @relation(fields: [boardId], references: [id])
+
+  // Relations
+  taughtCourses         Course[]            @relation("TeacherCourses")
+  enrollments            Enrollment[]
+  payments               Payment[]
+  quizAttempts           QuizAttempt[]
+  lectureProgress        LectureProgress[]
+  deviceSessions         DeviceSession[]
+  refreshTokens          RefreshToken[]
+  announcements          Announcement[]
+  learningStreak         LearningStreak?
+  notifications          Notification[]
+  uploadedMedia          Media[]             @relation("MediaUploader")
+  testimonialsAuthored   Testimonial[]       @relation("TestimonialCreatedBy")
+  verificationTokens     VerificationToken[]
+  enquiriesHandled      Enquiry[]         @relation("EnquiryRespondedBy")
+  settingsUpdates       AcademySettings[] @relation("SettingsUpdatedBy")
+
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Tracks distinct devices currently counted against the 2-device login limit.
+model DeviceSession {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId     String // client-generated stable identifier
+  deviceLabel  String? // e.g. "Chrome on Windows", set from User-Agent
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, deviceId])
+  @@map("device_sessions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Catalog: Boards, Classes, Subjects, Courses
+// Hierarchy (browsing/organizational): Board → Class → Subject → Chapter → Module
+// "Course" is the sellable unit at the Board+Class+Subject intersection —
+// see docs/03-database-design.md §2.1 for the full rationale.
+// ─────────────────────────────────────────────────────────────
+
+model Board {
+  id        String    @id @default(uuid())
+  name      String    @unique // "CBSE", "ICSE", "Karnataka State Board", ...
+  slug      String    @unique // "cbse", "icse", "karnataka-state-board"
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  courses Course[]
+  users   User[] // Module 2 addendum — students who self-reported this board
+
+  @@map("boards")
+}
+
+model ClassGrade {
+  id        String    @id @default(uuid())
+  name      String    @unique // "Class 4" .. "Class 10"
+  slug      String    @unique // "class-4" .. "class-10"
+  order     Int       @unique // 4..10, used for sorting
+  deletedAt DateTime?
+
+  courses Course[]
+  users   User[] // Module 2 addendum — students who self-reported this class
+
+  @@map("class_grades")
+}
+
+model Subject {
+  id        String    @id @default(uuid())
+  name      String    @unique // Mathematics, Science, English, ...
+  slug      String    @unique
+  deletedAt DateTime?
+
+  courses Course[]
+
+  @@map("subjects")
+}
+
+model Course {
+  id            String       @id @default(uuid())
+  title         String
+  slug          String       @unique
+  description   String
+  boardId       String
+  board         Board        @relation(fields: [boardId], references: [id])
+  classGradeId  String
+  classGrade    ClassGrade   @relation(fields: [classGradeId], references: [id])
+  subjectId     String
+  subject       Subject      @relation(fields: [subjectId], references: [id])
+  teacherId     String
+  teacher       User         @relation("TeacherCourses", fields: [teacherId], references: [id])
+  price         Decimal      @db.Decimal(10, 2)
+  discountPrice Decimal?     @db.Decimal(10, 2)
+  thumbnailId   String?
+  thumbnail     Media?       @relation("CourseThumbnail", fields: [thumbnailId], references: [id])
+  status        CourseStatus @default(DRAFT)
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  chapters      Chapter[]
+  enrollments   Enrollment[]
+  announcements Announcement[]
+  liveClasses   LiveClass[]
+
+  @@index([boardId, classGradeId, subjectId])
+  @@index([teacherId])
+  @@map("courses")
+}
+
+model Chapter {
+  id        String    @id @default(uuid())
+  courseId  String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  slug      String // SEO-friendly, unique within its parent course (not globally)
+  order     Int
+  deletedAt DateTime?
+
+  modules ContentModule[]
+
+  @@unique([courseId, slug])
+  @@index([courseId])
+  @@map("chapters")
+}
+
+// Named ContentModule (not "Module") to avoid ambiguity with unrelated
+// platform concepts (Node/Prisma "modules", a possible future Forum module).
+model ContentModule {
+  id        String    @id @default(uuid())
+  chapterId String
+  chapter   Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  deletedAt DateTime?
+
+  lectures Lecture[]
+  notes    Note[]
+  quizzes  Quiz[]
+
+  @@index([chapterId])
+  @@map("content_modules")
+}
+
+model Lecture {
+  id          String        @id @default(uuid())
+  moduleId    String
+  module      ContentModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  r2ObjectKey String // private object key in the PRIVATE R2 bucket, never a public URL
+  durationSec Int?
+  order       Int
+  status      LectureStatus @default(DRAFT)
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  progress LectureProgress[]
+
+  @@index([moduleId])
+  @@map("lectures")
+}
+
+model Note {
+  id          String    @id @default(uuid())
+  moduleId    String
+  module      ContentModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  r2ObjectKey String // private object key in the PRIVATE R2 bucket
+  order       Int
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([moduleId])
+  @@map("notes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Quizzes
+// ─────────────────────────────────────────────────────────────
+
+model Quiz {
+  id          String    @id @default(uuid())
+  moduleId    String
+  module      ContentModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  passPercent Int       @default(40)
+  deletedAt   DateTime?
+
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  @@index([moduleId])
+  @@map("quizzes")
+}
+
+// Question/QuestionOption are pure structural children of Quiz — their
+// lifecycle is fully owned by the quiz they belong to, so they cascade-delete
+// with it rather than carrying their own deletedAt (see docs/03 §2.6).
+model Question {
+  id     String @id @default(uuid())
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text   String
+  order  Int
+
+  options QuestionOption[]
+
+  @@index([quizId])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+
+  @@index([questionId])
+  @@map("question_options")
+}
+
+// Immutable historical record — never soft- or hard-deleted (see docs/03 §2.6).
+model QuizAttempt {
+  id          String   @id @default(uuid())
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id])
+  score       Int
+  totalMarks  Int
+  attemptedAt DateTime @default(now())
+
+  @@index([quizId, studentId])
+  @@map("quiz_attempts")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enrollment & Payments (immutable financial/audit records — no deletedAt)
+// ─────────────────────────────────────────────────────────────
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  enrolledAt DateTime @default(now())
+
+  // Nullable + unique: most enrollments come from a payment, but an
+  // Admin-granted scholarship enrollment doesn't require a fake Payment row.
+  paymentId String?  @unique
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  @@unique([studentId, courseId])
+  @@map("enrollments")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  courseId          String
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  status            PaymentStatus @default(PENDING)
+  invoiceUrl        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  enrollment Enrollment?
+
+  @@index([userId, status])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Progress & Engagement (append-only / session-derived — no deletedAt)
+// ─────────────────────────────────────────────────────────────
+
+model LectureProgress {
+  id              String   @id @default(uuid())
+  studentId       String
+  student         User     @relation(fields: [studentId], references: [id])
+  lectureId       String
+  lecture         Lecture  @relation(fields: [lectureId], references: [id])
+  lastPositionSec Int      @default(0)
+  isCompleted     Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@unique([studentId, lectureId])
+  @@map("lecture_progress")
+}
+
+model LearningStreak {
+  id             String    @id @default(uuid())
+  studentId      String    @unique
+  student        User      @relation(fields: [studentId], references: [id])
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime?
+
+  @@map("learning_streaks")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Announcements, Notifications & Live Classes
+// ─────────────────────────────────────────────────────────────
+
+model Announcement {
+  id        String    @id @default(uuid())
+  courseId  String?
+  course    Course?   @relation(fields: [courseId], references: [id])
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  title     String
+  body      String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  notifications Notification[]
+
+  @@index([courseId])
+  @@map("announcements")
+}
+
+// Generic notification fan-out target. An Announcement triggers one
+// Notification per enrolled student; future notification types (payment
+// receipts, live-class reminders, system messages) reuse the same table
+// without a schema change — see docs/03-database-design.md §2.7.
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  title          String
+  body           String
+  announcementId String?
+  announcement   Announcement?    @relation(fields: [announcementId], references: [id])
+  isRead         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model LiveClass {
+  id          String    @id @default(uuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  scheduledAt DateTime
+  meetingLink String // external Zoom/Google Meet URL for V1
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([courseId, scheduledAt])
+  @@map("live_classes")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Media (images only — videos/notes keep using private R2 + signed URLs above)
+// ─────────────────────────────────────────────────────────────
+
+// Images (thumbnails, avatars, logos, testimonial photos) live in a SEPARATE,
+// public/CDN-fronted R2 bucket from videos/notes. There's no confidentiality
+// requirement on a course thumbnail or a teacher's photo, and these need to
+// be directly embeddable in <img> tags, Open Graph tags, and sitemaps — a
+// signed, expiring URL would break all of that. See docs/02-architecture.md
+// §8 for the full media strategy and docs/03-database-design.md §2.5 for the
+// schema rationale.
+model Media {
+  id           String       @id @default(uuid())
+  purpose      MediaPurpose
+  r2ObjectKey  String // key within the PUBLIC R2 bucket
+  publicUrl    String // fully-qualified CDN URL — safe to embed directly
+  width        Int?
+  height       Int?
+  uploadedById String?
+  uploadedBy   User?        @relation("MediaUploader", fields: [uploadedById], references: [id])
+  deletedAt    DateTime?
+  createdAt    DateTime     @default(now())
+
+  avatarOfUsers        User[]            @relation("UserAvatar")
+  courseThumbnailFor    Course[]         @relation("CourseThumbnail")
+  testimonialPhotoFor   Testimonial[]
+  academySettingsLogoFor AcademySettings[]
+
+  @@map("media")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public-facing content managed by Admin: Testimonials, Enquiries, Settings
+// ─────────────────────────────────────────────────────────────
+
+model Testimonial {
+  id           String    @id @default(uuid())
+  authorName   String
+  authorRole   String? // e.g. "Parent of a Class 8 student"
+  photoId      String?
+  photo        Media?    @relation(fields: [photoId], references: [id])
+  quote        String
+  rating       Int? // optional 1–5
+  isFeatured   Boolean   @default(false)
+  isPublished  Boolean   @default(false)
+  displayOrder Int       @default(0)
+  createdById  String
+  createdBy    User      @relation("TestimonialCreatedBy", fields: [createdById], references: [id])
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([isPublished, displayOrder])
+  @@map("testimonials")
+}
+
+// Contact Us submissions. Status-driven rather than soft-deleted — "delete"
+// isn't really the right operation for a support-style inbox (see docs/03 §2.6).
+model Enquiry {
+  id            String        @id @default(uuid())
+  name          String
+  email         String
+  phone         String?
+  subject       String?
+  message       String
+  status        EnquiryStatus @default(NEW)
+  respondedById String?
+  respondedBy   User?         @relation("EnquiryRespondedBy", fields: [respondedById], references: [id])
+  respondedAt   DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@index([status])
+  @@map("enquiries")
+}
+
+// Singleton table — exactly one row, created by the seed script. The Admin
+// settings endpoint always updates that one row; it never creates a second.
+// Deliberately holds ONLY public-facing branding/contact info — secrets
+// (Razorpay keys, JWT secrets, R2 credentials) stay in environment variables
+// and must never be stored here, since this table is readable via a public
+// GET endpoint for the frontend footer/contact page.
+model AcademySettings {
+  id                    String    @id @default(uuid())
+  academyName           String
+  tagline               String?
+  logoId                String?
+  logo                  Media?    @relation(fields: [logoId], references: [id])
+  contactEmail          String
+  contactPhone          String?
+  address               String?
+  socialLinks           Json? // { "instagram": "...", "youtube": "...", "facebook": "..." }
+  seoDefaultTitle       String?
+  seoDefaultDescription String?
+  updatedById           String?
+  updatedBy             User?     @relation("SettingsUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime  @default(now())
+
+  @@map("academy_settings")
+}
+
+// ═════════════════════════════════════════════════════════════
+// MODULE 2 ADDENDUM
+// Everything above this line is the frozen Module 1 (v1.1) schema, unchanged.
+// Everything below was added during Module 2 to support the Auth module's
+// email verification requirement and to actually wire up FR-AUTH-1's
+// "target class/board at registration" (the User.classGradeId/boardId
+// fields above). See docs/07-module-2-notes.md for full rationale — nothing
+// here contradicts or modifies a Module 1 decision, it's purely additive.
+// ═════════════════════════════════════════════════════════════
+
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+// Single table for both email-verification and password-reset tokens rather
+// than two near-identical tables — same lifecycle (issued, single-use,
+// expires, optionally superseded). Only a SHA-256 hash of the raw token is
+// ever stored; the raw token exists only in the emailed link and briefly in
+// memory server-side, never at rest — the same principle already applied to
+// RefreshToken.token in the frozen schema.
+model VerificationToken {
+  id        String                @id @default(uuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      VerificationTokenType
+  tokenHash String                @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime              @default(now())
+
+  @@index([userId, type])
+  @@map("verification_tokens")
+}
