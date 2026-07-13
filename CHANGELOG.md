@@ -7,6 +7,85 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 3C — Admin Dashboard & Platform Management
+**Status:** Approved and frozen.
+
+### Pre-freeze verification pass
+Five items verified against the actual code and live requests before
+freezing. Four were already correctly implemented (RBAC on every admin
+route, verified live with real STUDENT/TEACHER tokens against every
+endpoint including bypass attempts; the structural cannot-touch-content
+guarantee; full Swagger coverage). One was a genuine gap:
+- **Platform Settings had no public read path.** `AcademySettings`'s own
+  Module 1 schema comment explicitly anticipated "a public GET endpoint
+  for the frontend footer/contact page," which the initial Module 3C pass
+  never built — only the admin-authenticated `GET/PATCH /admin/settings`
+  existed. In practice this meant the Navbar brand text, page `<title>`,
+  and placeholder Home page hero were all still hardcoded `"OASIS"`
+  literals with nowhere to read Admin's configured values from. Fixed by
+  adding a public `GET /settings` (reuses the existing service, no new
+  business logic) and wiring the Navbar, root layout metadata (including
+  favicon), and Home page to it, each falling back to the prior static
+  string only if the fetch fails. Also added a small, purely-additive
+  `revalidate` option to the frontend's shared `apiRequest` helper so
+  these values refresh every 60 seconds instead of being frozen at build
+  time — confirmed in the production build output.
+
+See `docs/10-module-3c-notes.md §7` for the complete write-up.
+
+### Added
+- **Backend**, one new `admin` module — Admin Dashboard (counts, recent
+  registrations, recent announcements) and basic Analytics; Teacher
+  management (add/edit/disable-enable/reset-password); Student management
+  (disable-enable/reset-password); read-only Course Oversight
+  (archive/delete only — no chapter/module/lecture/quiz/note access,
+  structurally, not just by convention); platform-wide Announcements
+  (create/edit/delete, plus the one public `GET /announcements/platform`);
+  Platform Settings (academy name/full name/tagline/contact/address/
+  social links/logo/favicon). 35 new backend tests (238 total).
+- **Frontend**: Admin Dashboard, Teachers, Students, Course Oversight,
+  Announcements, and Settings pages, behind a new `admin/layout.tsx`
+  guard with a simple sub-navigation — same pattern as `student/`/
+  `teacher/`. A new `PlatformAnnouncementsBanner`, mounted once in the
+  root layout below the Navbar, so platform-wide announcements genuinely
+  reach every visitor, including logged-out ones.
+- Two additive schema fields on `AcademySettings` (`academyFullName`,
+  `faviconId` + a new `favicon` relation to `Media`) — the brief asked
+  for both explicitly and neither existed.
+- `POST /media` / `DELETE /media/:id` (Module 3B) now also accept `ADMIN`
+  alongside `TEACHER` — needed for logo/favicon upload, already
+  anticipated by Module 3B's `MediaPurposeValue` having an unused
+  `ACADEMY_LOGO` case.
+- A demo Admin account added to `database/seed.ts`
+  (`admin@oasis.example.com` / `Admin@123`), same pattern as the existing
+  demo teacher/student accounts.
+
+### Design decisions of note
+- `AdminCourseService` has no dependency on `content-management`'s
+  repository at all — "Admin must not edit chapters/modules/lectures/
+  quizzes/notes" is enforced by the service literally having no method
+  that could reach that content, verified by a dedicated test.
+- Password reset reuses Module 2's real `AuthService.forgotPassword` flow
+  rather than a new "set password directly" mechanism — a plaintext
+  password never transits the Admin API.
+- Both `ADMIN` and `SUPER_ADMIN` are accepted on every admin route (the
+  brief says "Only ADMIN," but a more-privileged role having at least the
+  same access as a less-privileged one is the safer default given
+  `SUPER_ADMIN` has no other defined semantics anywhere in the docs).
+- "Active Users" (Analytics) is defined as distinct users holding a
+  currently-valid refresh token — reuses the existing `RefreshToken`
+  table, zero schema changes, rather than adding a `lastLoginAt` field
+  for one number.
+
+### Real bugs found
+None in this module's own new code — the Module 3B Swagger YAML mistake
+was specifically checked against and passed clean on first live boot
+(65 path entries, zero parser errors).
+
+See `docs/10-module-3c-notes.md` for the complete write-up.
+
+---
+
 ## Module 3B — Teacher Dashboard & Course Management
 **Status:** Approved and frozen.
 

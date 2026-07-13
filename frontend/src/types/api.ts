@@ -344,3 +344,163 @@ export interface CreateMediaResult {
   uploadUrl: string;
   expiresInSeconds: number;
 }
+
+// ── Admin (Module 3C) ────────────────────────────────────────────────
+
+export interface AdminUserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'TEACHER' | 'STUDENT';
+  createdAt: string;
+}
+
+export interface AdminAnnouncementSummary {
+  id: string;
+  title: string;
+  body: string;
+  courseId: string | null;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalCourses: number;
+  totalEnrollments: number;
+  recentRegistrations: AdminUserSummary[];
+  recentAnnouncements: AdminAnnouncementSummary[];
+}
+
+export interface AnalyticsStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalCourses: number;
+  totalEnrollments: number;
+  activeUsers: number;
+  publishedCourses: number;
+}
+
+export interface AdminTeacherRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  isActive: boolean;
+  courseCount: number;
+  createdAt: string;
+}
+
+export interface AdminStudentRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  isActive: boolean;
+  enrollmentCount: number;
+  createdAt: string;
+}
+
+export interface AdminCourseRecord {
+  id: string;
+  title: string;
+  slug: string;
+  status: CourseStatus;
+  teacher: { id: string; fullName: string; email: string };
+  enrollmentCount: number;
+  createdAt: string;
+}
+
+export interface PlatformSettings {
+  academyName: string;
+  academyFullName: string | null;
+  tagline: string | null;
+  contactEmail: string;
+  contactPhone: string | null;
+  address: string | null;
+  socialLinks: Record<string, string> | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  updatedAt: string;
+}
+
+// ── Admin (Module 3C) ────────────────────────────────────────────────
+
+export interface AdminUserSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'TEACHER' | 'STUDENT';
+  createdAt: string;
+}
+
+export interface AdminAnnouncementSummary {
+  id: string;
+  title: string;
+  body: string;
+  courseId: string | null;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface DashboardStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalCourses: number;
+  totalEnrollments: number;
+  recentRegistrations: AdminUserSummary[];
+  recentAnnouncements: AdminAnnouncementSummary[];
+}
+
+export interface AnalyticsStats {
+  totalStudents: number;
+  totalTeachers: number;
+  totalCourses: number;
+  totalEnrollments: number;
+  activeUsers: number;
+  publishedCourses: number;
+}
+
+export interface AdminTeacherRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  isActive: boolean;
+  courseCount: number;
+  createdAt: string;
+}
+
+export interface AdminStudentRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  isActive: boolean;
+  enrollmentCount: number;
+  createdAt: string;
+}
+
+export interface AdminCourseRecord {
+  id: string;
+  title: string;
+  slug: string;
+  status: CourseStatus;
+  teacher: { id: string; fullName: string; email: string };
+  enrollmentCount: number;
+  createdAt: string;
+}
+
+export interface PlatformSettings {
+  academyName: string;
+  academyFullName: string | null;
+  tagline: string | null;
+  contactEmail: string;
+  contactPhone: string | null;
+  address: string | null;
+  socialLinks: Record<string, string> | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  updatedAt: string;
+}

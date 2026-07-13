@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { Button } from '@/components/ui/Button';
 
 export function Navbar() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const settings = usePlatformSettings();
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
 
@@ -28,7 +30,7 @@ export function Navbar() {
     <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="shrink-0 text-lg font-bold tracking-tight text-brand-700">
-          OASIS
+          {settings?.academyName ?? 'OASIS'}
         </Link>
 
         <Link href="/courses" className="hidden shrink-0 text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline">
@@ -53,7 +55,13 @@ export function Navbar() {
           {isLoading ? null : isAuthenticated ? (
             <>
               <Link
-                href={user?.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard'}
+                href={
+                  user?.role === 'TEACHER'
+                    ? '/teacher/dashboard'
+                    : user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+                      ? '/admin/dashboard'
+                      : '/student/dashboard'
+                }
                 className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
               >
                 Dashboard

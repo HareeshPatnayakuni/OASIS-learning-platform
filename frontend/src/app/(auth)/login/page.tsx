@@ -30,7 +30,13 @@ export default function LoginPage() {
       // just-completed login until the next render.
       const { accessToken } = getStoredTokens();
       const me = await apiRequest<PublicUser>('/users/me', { accessToken: accessToken ?? undefined });
-      router.push(me.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard');
+      if (me.role === 'TEACHER') {
+        router.push('/teacher/dashboard');
+      } else if (me.role === 'ADMIN' || me.role === 'SUPER_ADMIN') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/student/dashboard');
+      }
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);

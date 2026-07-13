@@ -6,7 +6,7 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: end of Module 3B.
+Updated after every approved module. Last updated: end of Module 3C.
 
 ---
 
@@ -24,6 +24,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 2 — Repo Scaffolding, Infra, Auth | ✅ Frozen |
 | 3A — Student Learning Experience | ✅ Frozen |
 | 3B — Teacher Dashboard & Course Management | ✅ Frozen |
+| 3C — Admin Dashboard & Platform Management | ✅ Frozen |
 
 Frozen means: don't redesign it. Extend it additively, the way Module 2
 added `VerificationToken` to the schema without touching any Module 1
@@ -99,6 +100,45 @@ example: full syllabus for everyone, `isEnrolled`/progress added on top
 for a logged-in enrolled student). Don't reach for `optionalAuthenticate`
 as a shortcut around deciding whether a route actually needs
 authentication — if in doubt, it needs `authenticate`.
+
+**ADMIN routes accept both `ADMIN` and `SUPER_ADMIN`** (Module 3C,
+`requireRole('ADMIN', 'SUPER_ADMIN')`) — `SUPER_ADMIN` has existed in the
+`UserRole` enum since Module 1 with no defined behavior anywhere; a
+more-privileged role having at least the access a less-privileged one
+does is the reasonable default, not a restriction. Follow this pairing
+for any future Admin-scoped route rather than `requireRole('ADMIN')` alone.
+
+**Prevent an entire category of write by removing the dependency, not
+just by checking permissions** (Module 3C, `AdminCourseService`): "Admin
+must not edit chapters/modules/lectures/quizzes/notes" is enforced by
+`AdminCourseService` having no dependency on `content-management`'s
+repository at all — there's no method that could reach that content, not
+a permission check guarding one that exists. When a future module has a
+hard "must never be able to X" requirement, prefer this shape (make X
+impossible to call) over a runtime check (make X return 403) wherever the
+two are equally natural — it fails safe even against a future bug in the
+check itself. Verified with a dedicated "structural guarantee" test
+(inspects the service's own method list) rather than only a behavioral one.
+
+**Reuse existing security-sensitive flows instead of building parallel
+ones** (Module 3C: `AdminTeacherService`/`AdminStudentService`'s password
+reset composes Module 2's real `AuthService.forgotPassword` directly,
+rather than adding a new "set password directly" mechanism). If a new
+module needs to trigger something a frozen module already does correctly
+and securely, import and call that module's exported class rather than
+reimplementing a parallel version — it's both less code and avoids a
+second, less-tested path to the same sensitive outcome.
+
+**Adding a second relation to an already-related model requires explicit
+`@relation` names on both sides, retroactively** (Module 3C: adding
+`AcademySettings.favicon → Media` alongside the existing
+`AcademySettings.logo → Media` required naming both relations explicitly,
+since Prisma can't infer which is which once there are 2+ relations
+between the same two models). This is the one case where an *existing*
+field's annotation (not its type, nullability, or behavior) has to change
+as the minimal necessary consequence of an additive schema change — expect
+this same requirement any time a new relation is added to a model that
+already relates to the same target model somewhere else.
 
 **Logging:** structured JSON via pino, one shared `logger` instance
 (`lib/logger.ts`), redacts secrets/tokens/passwords automatically. Request
@@ -201,9 +241,12 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   separately.
 - Success responses: `{ data: ... }`. Errors: `{ error: { code, message, details? } }`.
 - Pagination: `?page=&limit=` → `{ data: [...], meta: { page, limit, total } }`.
-- Soft-deleted resources 404 by default; `?includeDeleted=true` is an
-  Admin-only recovery escape hatch (not yet built — no Admin module exists
-  yet).
+- Soft-deleted resources 404 by default; `?includeDeleted=true` is
+  documented as a future Admin-only recovery escape hatch — still not
+  built as of Module 3C. That module built discrete Admin management
+  endpoints (list/archive/delete teachers/students/courses/announcements),
+  not a generic query-param override on every existing endpoint; the two
+  are different features and shouldn't be conflated.
 - Full resource-by-resource design: `docs/04-api-design.md`. Where a new
   module needs an endpoint that doc didn't anticipate (e.g. a learning-streak
   endpoint), add it and document the addition in that module's notes file —
@@ -239,21 +282,26 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   enrolled students to exist for testing, seed them directly
   (`database/seed.ts`), the same way an Admin-granted scholarship
   enrollment would work (`Enrollment.paymentId` is nullable for exactly
-  this reason). Confirmed still true as of Module 3B — the Course Details
+  this reason). Confirmed still true as of Module 3C — the Course Details
   page's "Enroll" CTA is a deliberately disabled button, not a broken
   checkout flow.
-- **Media module — partially built as of Module 3B.** Image uploads
-  (signed PUT direct-to-R2, public/CDN bucket) now work for course
-  thumbnails: `POST /media` (`backend/src/modules/media/`) +
-  `backend/src/lib/r2Public.ts`. `Course.thumbnailId` is populated when a
-  teacher uploads one. Still not built: avatar upload UI, academy logo,
-  testimonial photos — the pipeline supports all of these
-  (`MediaPurposeValue` already has cases for them), just no caller exists
-  yet for anything except `COURSE_THUMBNAIL`.
-- **Admin functionality is still not built** (Module 3B built Teacher, not
-  Admin) — no user management, no cross-teacher moderation, no payment
-  records UI, no platform-wide settings UI.
-- **Teacher functionality is now built** (Module 3B): course authoring,
+- **Media module — image uploads now cover course thumbnails (Module 3B)
+  and academy logo/favicon (Module 3C)**: `POST /media` (`backend/src/modules/media/`)
+  + `backend/src/lib/r2Public.ts`, now accepting both `TEACHER` and
+  `ADMIN`. Still not built: avatar upload UI, testimonial photos — the
+  pipeline supports these too (`MediaPurposeValue` already has cases for
+  them), just no caller exists yet.
+- **Admin functionality is now built** (Module 3C): Admin Dashboard,
+  basic Analytics, Teacher management (add/edit/disable-enable/reset-password),
+  Student management (disable-enable/reset-password), read-only Course
+  Oversight (archive/delete only — never chapters/modules/lectures/quizzes/notes,
+  structurally, not just by convention — see §4), platform-wide
+  Announcements, and Platform Settings. A demo Admin account exists
+  (`database/seed.ts`: `admin@oasis.example.com` / `Admin@123`). Still not
+  built: cross-teacher content moderation, any Admin self-registration
+  flow (Admin accounts are provisioned directly, never self-registered —
+  matches how the demo account is seeded).
+- **Teacher functionality is built** (Module 3B): course authoring,
   content management (chapters/modules/lectures/notes/quizzes), and
   announcements. A demo teacher account exists (`database/seed.ts`) and
   can now actually use a real dashboard, not just serve as an FK target
@@ -299,6 +347,42 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   `student/` are guarded by `src/app/student/layout.tsx`, which redirects
   to `/login` if not authenticated — a UX convenience only; the backend
   independently enforces `requireRole('STUDENT')` regardless.
+- **Role-scoped area layouts all follow the same guard shape**
+  (`student/layout.tsx`, `teacher/layout.tsx`, `admin/layout.tsx` — the
+  last added in Module 3C): redirect to `/login` if unauthenticated, show
+  a plain message if authenticated but the wrong role, otherwise render.
+  `admin/layout.tsx` additionally renders a small sub-navigation tab bar
+  (Dashboard/Analytics/Teachers/Students/Courses/Announcements/Settings) —
+  reuse that tab-bar shape for any future area with more than ~4 sibling
+  pages under one role-gated section, rather than inventing a new nav
+  pattern per area.
+- **One global banner, not one per dashboard** (Module 3C:
+  `PlatformAnnouncementsBanner`, mounted once in the root layout below
+  the Navbar): when something needs to be visible to literally every
+  visitor regardless of role or auth state, mount it once at the root
+  rather than duplicating the same fetch across student/teacher/admin
+  dashboards. This was also the one place Module 3C touched a Module 3A
+  frozen file (`app/layout.tsx`) — a single self-contained
+  import-and-render addition, not a change to anything existing in it.
+- **Academy branding (name/full name/tagline/logo/favicon) always comes
+  from `GET /settings` (public), never a hardcoded literal** (Module 3C,
+  fixed during pre-freeze verification — see
+  `docs/10-module-3c-notes.md §7` item 3). Client Components use the
+  `usePlatformSettings()` hook (`src/hooks/usePlatformSettings.ts`);
+  Server Components call `apiRequest('/settings', { revalidate: 60 })`
+  directly (see the root `layout.tsx`'s `generateMetadata()` and the
+  Home page for the pattern). Every consumer falls back to a static
+  string (`"OASIS"` etc.) only if the fetch fails — that's a resilience
+  fallback, not permission to hardcode the value as the primary source.
+  If a future page shows academy branding, use one of these two patterns
+  rather than a new literal string.
+- **`lib/api-client.ts`'s `RequestOptions` has an optional `revalidate`
+  passthrough** (Module 3C addendum — purely additive, every existing
+  caller is unaffected since it's `undefined` unless explicitly passed):
+  set this on any server-side `apiRequest`/`apiRequestPaginated` call
+  for data that changes occasionally and shouldn't be frozen at build
+  time by Next's default fetch caching. Without it, a static page that
+  fetches once at build time never sees updates until the next deploy.
 - **Design tokens** (Module 3A): brand indigo + accent amber, defined once
   in `src/app/globals.css`'s `@theme inline` block (`--color-brand-*`,
   `--color-accent-*`, `--color-success-*`) and used via Tailwind utilities

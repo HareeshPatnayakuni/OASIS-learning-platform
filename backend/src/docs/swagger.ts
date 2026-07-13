@@ -43,7 +43,13 @@ const options: swaggerJsdoc.Options = {
         name: 'Announcements',
         description: 'Post/edit/delete course announcements, with student notification fan-out (Teacher)',
       },
-      { name: 'Media', description: 'Signed image upload URLs for course thumbnails, etc. (Teacher)' },
+      { name: 'Media', description: 'Signed image upload URLs for course thumbnails, etc. (Teacher, Admin)' },
+      {
+        name: 'Admin',
+        description:
+          'Admin Dashboard, teacher/student account management, read-only course oversight, ' +
+          'platform-wide announcements, and platform settings (Admin/Super Admin only)',
+      },
       { name: 'Enrollments', description: "A student's own enrolled courses and computed progress" },
       { name: 'Users', description: 'Profile, Learning Streak, Continue Watching, Announcements' },
       { name: 'Search', description: 'Search across courses, chapters, and modules' },

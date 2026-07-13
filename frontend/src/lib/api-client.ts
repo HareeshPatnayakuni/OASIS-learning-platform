@@ -38,6 +38,12 @@ interface RequestOptions {
   body?: unknown;
   accessToken?: string;
   signal?: AbortSignal;
+  /** Next.js server-side fetch cache lifetime in seconds, for data that
+   * changes occasionally and shouldn't be baked in at build time (e.g.
+   * Platform Settings — see docs/10-module-3c-notes.md). Omitted by
+   * every existing caller, which keeps Next's default fetch caching
+   * behavior exactly as it was. */
+  revalidate?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -81,6 +87,7 @@ async function apiRequestEnvelope<TEnvelope>(
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
+    ...(options.revalidate !== undefined ? { next: { revalidate: options.revalidate } } : {}),
   });
 
   if (response.status === 204) {

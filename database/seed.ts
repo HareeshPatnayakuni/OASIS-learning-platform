@@ -24,6 +24,7 @@ import { randomBytes } from 'node:crypto';
  * into a real production database):
  *   Student: student@oasis.example.com / Student@123
  *   Teacher: teacher@oasis.example.com / Teacher@123
+ *   Admin:   admin@oasis.example.com / Admin@123
  * Hashed with real bcrypt (cost 12, matching
  * backend/src/modules/auth/password.util.ts exactly) — these accounts can
  * actually log in through POST /api/v1/auth/login, not just exist as rows.
@@ -84,9 +85,10 @@ async function main(): Promise<void> {
     });
   }
 
-  console.log('Seeding demo teacher and student accounts...');
+  console.log('Seeding demo teacher, student, and admin accounts...');
   const teacherPasswordHash = await bcrypt.hash('Teacher@123', BCRYPT_COST_FACTOR);
   const studentPasswordHash = await bcrypt.hash('Student@123', BCRYPT_COST_FACTOR);
+  const adminPasswordHash = await bcrypt.hash('Admin@123', BCRYPT_COST_FACTOR);
 
   const teacher = await prisma.user.upsert({
     where: { email: 'teacher@oasis.example.com' },
@@ -111,6 +113,21 @@ async function main(): Promise<void> {
       emailVerifiedAt: new Date(),
       classGradeId: class8.id,
       boardId: cbse.id,
+    },
+  });
+
+  // Module 3C addendum — no Admin registration flow exists (by design; see
+  // docs/10-module-3c-notes.md), so a demo Admin account is seeded
+  // directly, the same way the demo teacher/student accounts already are.
+  await prisma.user.upsert({
+    where: { email: 'admin@oasis.example.com' },
+    update: {},
+    create: {
+      email: 'admin@oasis.example.com',
+      fullName: 'OASIS Admin',
+      role: 'ADMIN',
+      passwordHash: adminPasswordHash,
+      emailVerifiedAt: new Date(),
     },
   });
 

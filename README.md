@@ -22,7 +22,7 @@ oasis-platform/
 
 ## Project status
 
-**Modules 1, 2, 3A, and 3B are all approved and FROZEN — together the
+**Modules 1, 2, 3A, 3B, and 3C are all approved and FROZEN — together the
 source of truth for every module going forward.**
 
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
@@ -67,6 +67,25 @@ corrections needed. See
 [`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) for the
 complete write-up.
 
+**Module 3C (Admin Dashboard & Platform Management): approved and
+frozen.** Admin Dashboard (counts, recent registrations/announcements),
+basic Analytics, Teacher management (add/edit/disable-enable/
+reset-password), Student management (disable-enable/reset-password),
+read-only Course Oversight (archive/delete only — never chapters/modules/
+lectures/quizzes/notes, enforced structurally, not just by convention),
+platform-wide Announcements (with a banner visible to every visitor,
+including logged-out ones), and Platform Settings (branding, contact
+info, logo/favicon upload) — one new backend module (35 tests, 238 total)
+and a real Admin-facing frontend. Password reset reuses Module 2's real
+forgot-password flow rather than a new mechanism. Went through a
+pre-freeze verification pass that found one genuine gap: Platform
+Settings had no public read path, so the Navbar, page title, and Home
+page were still showing hardcoded "OASIS" literals — fixed with a new
+public `GET /settings` endpoint and three frontend consumers wired to it,
+each with a live-refreshing (not build-time-frozen) fetch. See
+[`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) for the
+complete write-up.
+
 See also [`CHANGELOG.md`](CHANGELOG.md) for a chronological record and
 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for the living, single-source-of-truth
 architectural summary every future module should be checked against.
@@ -87,6 +106,7 @@ architectural summary every future module should be checked against.
 | [`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) | Module 2 design decisions, schema addendum, and what was actually built/tested |
 | [`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) | Module 3A design decisions and what was actually built/tested |
 | [`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) | Module 3B design decisions and what was actually built/tested |
+| [`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) | Module 3C design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -168,7 +188,7 @@ cd frontend && npm run dev    # http://localhost:3000 (separate terminal)
 ### 6. Verify
 - Backend health check: `curl http://localhost:4000/health`
 - API docs: `http://localhost:4000/api/v1/docs`
-- Run the test suite: `cd backend && npm test` (203 tests)
+- Run the test suite: `cd backend && npm test` (238 tests)
 - Frontend: `http://localhost:3000`
 
 ---
@@ -254,9 +274,10 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Modules 1, 2, 3A, and 3B are frozen and are the project's permanent
+Modules 1, 2, 3A, 3B, and 3C are frozen and are the project's permanent
 architecture — every module since builds on the `AuthRepository` pattern,
 the middleware pipeline, the error envelope, the env-validation approach,
 `optionalAuthenticate`, the two-tier signed-URL TTL convention, the
-ownership-assertion-before-every-write pattern, and numeric move-up/down
-reordering established there, rather than redesigning them.
+ownership-assertion-before-every-write pattern, numeric move-up/down
+reordering, and the public-`GET /settings`-for-dynamic-branding pattern
+established there, rather than redesigning them.

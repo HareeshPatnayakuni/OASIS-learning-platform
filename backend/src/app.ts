@@ -22,6 +22,7 @@ import { searchRouter } from './modules/search/search.routes';
 import { mediaRouter } from './modules/media/media.routes';
 import { quizzesRouter } from './modules/quizzes/quizzes.routes';
 import { teacherAnnouncementsRouter } from './modules/announcements/announcements.routes';
+import { adminRouter } from './modules/admin/admin.routes';
 import { openapiSpec } from './docs/swagger';
 
 export function createApp(): Express {
@@ -104,6 +105,7 @@ export function createApp(): Express {
   app.use('/api/v1', contentManagementRouter); // POST/PATCH/DELETE chapters, modules, lectures, notes
   app.use('/api/v1', quizzesRouter);
   app.use('/api/v1', teacherAnnouncementsRouter);
+  app.use('/api/v1', adminRouter);
   app.use('/api/v1/enrollments', enrollmentsRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/search', searchRouter);

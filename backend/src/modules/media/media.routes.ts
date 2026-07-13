@@ -9,6 +9,13 @@ import { createMediaBodySchema, mediaIdParamsSchema } from './media.validators';
 const router = Router();
 const controller = new MediaController();
 
+// Module 3C addendum: ADMIN was added alongside TEACHER on both routes
+// below so Platform Settings (docs/10-module-3c-notes.md) can upload an
+// academy logo/favicon through this same pipeline — MediaPurposeValue
+// already had ACADEMY_LOGO/GENERIC cases reserved for exactly this,
+// per Module 3B's PROJECT_MEMORY.md note. Everything else in this file
+// (ownership-on-delete, content-type validation, TTLs) is unchanged.
+
 /**
  * @openapi
  * /media:
@@ -38,7 +45,7 @@ const controller = new MediaController();
 router.post(
   '/',
   authenticate,
-  requireRole('TEACHER'),
+  requireRole('TEACHER', 'ADMIN'),
   validate({ body: createMediaBodySchema }),
   asyncHandler(controller.create),
 );
@@ -63,7 +70,7 @@ router.post(
 router.delete(
   '/:id',
   authenticate,
-  requireRole('TEACHER'),
+  requireRole('TEACHER', 'ADMIN'),
   validate({ params: mediaIdParamsSchema }),
   asyncHandler(controller.remove),
 );
