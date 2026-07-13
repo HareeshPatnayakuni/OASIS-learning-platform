@@ -1,5 +1,6 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomBytes } from 'node:crypto';
 import { env } from '../config/env';
 import { logger } from './logger';
 
@@ -89,4 +90,52 @@ export function getSignedLectureUrl(r2ObjectKey: string): Promise<SignedUrlResul
 
 export function getSignedNoteUrl(r2ObjectKey: string): Promise<SignedUrlResult> {
   return getSignedPrivateUrl(r2ObjectKey, NOTE_DOWNLOAD_TTL_SECONDS);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Module 3B addendum — Teacher upload flow (additive; nothing above this
+// line changed). The Teacher never uploads a file through the Express
+// server itself: the backend creates the Lecture/Note metadata row with a
+// server-generated, collision-resistant object key, hands back a
+// short-lived presigned PUT URL for that exact key, and the browser
+// uploads the bytes directly to R2. See content-management module.
+// ─────────────────────────────────────────────────────────────
+
+const UPLOAD_URL_TTL_SECONDS = 15 * 60; // 15 minutes — generous for a large video upload on a slow connection
+
+export interface UploadUrlResult {
+  uploadUrl: string;
+  expiresInSeconds: number;
+}
+
+/** Generates a unique, collision-resistant object key under a per-course
+ * prefix — never derived from user-supplied input (e.g. the original
+ * filename), which avoids both path-traversal concerns and awkward
+ * characters ending up in an R2 key. */
+export function generatePrivateObjectKey(kind: 'videos' | 'notes', courseId: string): string {
+  return `${kind}/${courseId}/${randomBytes(16).toString('hex')}`;
+}
+
+async function getUploadUrlForPrivateObject(objectKey: string, contentType: string): Promise<UploadUrlResult> {
+  if (!client) {
+    logger.error('Attempted to issue an R2 private-bucket upload URL without credentials configured');
+    throw new R2NotConfiguredError();
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: env.R2_PRIVATE_BUCKET_NAME,
+    Key: objectKey,
+    ContentType: contentType,
+  });
+
+  const uploadUrl = await getSignedUrl(client, command, { expiresIn: UPLOAD_URL_TTL_SECONDS });
+  return { uploadUrl, expiresInSeconds: UPLOAD_URL_TTL_SECONDS };
+}
+
+export function getLectureUploadUrl(r2ObjectKey: string, contentType: string): Promise<UploadUrlResult> {
+  return getUploadUrlForPrivateObject(r2ObjectKey, contentType);
+}
+
+export function getNoteUploadUrl(r2ObjectKey: string, contentType: string): Promise<UploadUrlResult> {
+  return getUploadUrlForPrivateObject(r2ObjectKey, contentType);
 }

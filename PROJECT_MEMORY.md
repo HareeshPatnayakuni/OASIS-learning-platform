@@ -6,7 +6,7 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: end of Module 3A.
+Updated after every approved module. Last updated: end of Module 3B.
 
 ---
 
@@ -23,6 +23,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 1 — Planning & Architecture (v1.1) | ✅ Frozen |
 | 2 — Repo Scaffolding, Infra, Auth | ✅ Frozen |
 | 3A — Student Learning Experience | ✅ Frozen |
+| 3B — Teacher Dashboard & Course Management | ✅ Frozen |
 
 Frozen means: don't redesign it. Extend it additively, the way Module 2
 added `VerificationToken` to the schema without touching any Module 1
@@ -144,6 +145,42 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   through any lecture longer than ~10 minutes — if a future module adds a
   new signed-URL use case, size its TTL to the actual access pattern, not
   by copying whichever constant is closest.
+- **Uploads use the identical signed-URL pattern as downloads, just PUT
+  instead of GET** (Module 3B: `lib/r2.ts`'s `getLectureUploadUrl`/
+  `getNoteUploadUrl`, and the new `lib/r2Public.ts` for images). The
+  backend never receives file bytes — it generates a collision-resistant
+  object key server-side (never derived from a client-supplied filename),
+  signs a short-lived PUT URL for that exact key, and the browser uploads
+  directly to R2. `lib/r2.ts`'s existing GET-signing exports from Module
+  3A were extended additively (new functions appended, nothing existing
+  changed); `lib/r2Public.ts` is a wholly new file for the public/CDN
+  bucket, with its own credentials — never conflate the private
+  (video/notes) and public (images) pipelines.
+- **Teacher-facing content writes live in a separate module
+  (`content-management`) from the student-facing `content` module**
+  (Module 3A, frozen) — same Prisma schema, zero shared code. If a future
+  module needs both a student read and a teacher write for the same kind
+  of resource, this is the established precedent: two modules, not one
+  module serving two audiences.
+- **Numeric reordering, not drag-and-drop**: every reorderable resource
+  (Chapter, ContentModule, Lecture) exposes one `PATCH .../move` endpoint
+  taking `{ direction: 'up' | 'down' }`, swapping `order` with the
+  immediate sibling (`content-management/reorder.util.ts`'s
+  `moveSibling`, shared across all three). If a future resource needs
+  reordering, reuse this utility rather than inventing a new scheme.
+- **Ownership identity always comes from the verified JWT
+  (`req.user!.id`), never from `req.body`/`req.params`.** Every
+  Module 3B controller passes `req.user!.id` as the acting teacher's
+  identity into its service, and every service asserts that ID actually
+  owns the resource (directly, or via the `lib/ownership.ts` traversal
+  helpers) before doing anything else. This is the actual IDOR defense —
+  a client changing an ID in the URL can change *which resource* it's
+  asking about, never *who it's asking as*. Confirmed with a dedicated
+  pre-freeze audit (`docs/09-module-3b-notes.md §7`, item 1) that found
+  zero exceptions across all 6 Module 3B controllers. Any future module
+  accepting a teacher/owner ID from client input instead of the session
+  would be a real regression of this guarantee, not a stylistic
+  preference — check for it explicitly if reviewing new write endpoints.
 - **Content visibility is filtered at the query that serves it, not only
   at the point of finest-grained access.** `GET /lectures/:id/stream-url`
   correctly blocked non-`PUBLISHED` lectures from day one, but the public
@@ -197,31 +234,44 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 
 ## 8. Deferred / not yet built (don't assume these exist)
 
-- **Payments module** (Razorpay) — not built. There is no API that creates
-  an `Enrollment` from a real purchase yet. Where a module needs enrolled
-  students to exist for testing, seed them directly (`database/seed.ts`),
-  the same way an Admin-granted scholarship enrollment would work
-  (`Enrollment.paymentId` is nullable for exactly this reason). Confirmed
-  still true as of Module 3A — the Course Details page's "Enroll" CTA is a
-  deliberately disabled button, not a broken checkout flow.
-- **Media module** (image upload to the public R2 bucket) — not built.
-  `Course.thumbnailId`, `User.avatarId` etc. exist in the schema but
-  nothing populates them yet — every `thumbnailUrl`/`avatarUrl` in current
-  API responses is `null` in practice. The frontend already handles this
-  (`CourseCard` falls back to a placeholder icon), so wiring up Media later
-  needs no frontend changes, just real data.
-- **Teacher and Admin functionality** — not built as of Module 3A by
-  explicit instruction. No course-authoring, no announcement-creation, no
-  user management, no payment records UI. Where student-facing features
-  need this data to exist, seed it. A demo teacher account exists
-  (`database/seed.ts`) as the FK target for seeded courses, not as a
-  usable dashboard.
-- **Quizzes** — schema exists, no endpoints built yet.
-- **Notifications** — schema exists (fan-out on Announcement creation is
-  the intended trigger), not built — Module 3A ships Announcements
-  read-only, not the Notification fan-out.
+- **Payments module** (Razorpay) — still not built. There is no API that
+  creates an `Enrollment` from a real purchase. Where a module needs
+  enrolled students to exist for testing, seed them directly
+  (`database/seed.ts`), the same way an Admin-granted scholarship
+  enrollment would work (`Enrollment.paymentId` is nullable for exactly
+  this reason). Confirmed still true as of Module 3B — the Course Details
+  page's "Enroll" CTA is a deliberately disabled button, not a broken
+  checkout flow.
+- **Media module — partially built as of Module 3B.** Image uploads
+  (signed PUT direct-to-R2, public/CDN bucket) now work for course
+  thumbnails: `POST /media` (`backend/src/modules/media/`) +
+  `backend/src/lib/r2Public.ts`. `Course.thumbnailId` is populated when a
+  teacher uploads one. Still not built: avatar upload UI, academy logo,
+  testimonial photos — the pipeline supports all of these
+  (`MediaPurposeValue` already has cases for them), just no caller exists
+  yet for anything except `COURSE_THUMBNAIL`.
+- **Admin functionality is still not built** (Module 3B built Teacher, not
+  Admin) — no user management, no cross-teacher moderation, no payment
+  records UI, no platform-wide settings UI.
+- **Teacher functionality is now built** (Module 3B): course authoring,
+  content management (chapters/modules/lectures/notes/quizzes), and
+  announcements. A demo teacher account exists (`database/seed.ts`) and
+  can now actually use a real dashboard, not just serve as an FK target
+  for seeded courses.
+- **Quizzes can now be authored** (Module 3B: create/edit/delete, with
+  question/option validation) **but not yet attempted.** There's no
+  student-facing "take this quiz" flow — `QuizAttempt` exists in the
+  schema for when that's built, but nothing writes to it yet.
+- **Notifications: the Announcement fan-out is now built** (Module 3B —
+  posting an announcement creates a `Notification` row per enrolled
+  student, per the original design in `docs/02-architecture.md §6.1`).
+  Still not built: any UI for a student to browse/mark-read their
+  Notifications specifically (separate from the Announcements list they
+  already see via `GET /users/me/announcements`, Module 3A) — that's a
+  small, self-contained addition whenever it's wanted.
 - Parent Dashboard, native mobile apps, AI Tutor, built-in live classrooms,
-  discussion forum, advanced analytics — out of V1 scope entirely, see
+  discussion forum, advanced analytics, assignments, attendance,
+  certificates, scheduling — out of V1 scope entirely, see
   `docs/02-architecture.md §9` for their extension points.
 
 ## 9. Frontend conventions

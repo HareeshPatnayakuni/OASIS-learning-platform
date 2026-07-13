@@ -60,18 +60,21 @@ module.exports = {
       },
     },
     {
-      // *.repository.ts files are the ONLY files that import PrismaClient
-      // (docs/02-architecture.md §2's Clean Architecture boundary). In this
-      // sandbox, @prisma/client is a hand-written local-only stub with
-      // `any`-typed delegates (real `prisma generate` cannot run here —
-      // see docs/07-module-2-notes.md §6) — every no-unsafe-* error below
-      // is that stub's imprecision propagating through, not a correctness
+      // *.repository.ts files (and lib/ownership.ts, which is a shared
+      // Prisma-touching helper used BY repositories, not a repository
+      // itself, but faces the identical stub limitation) are the only
+      // files that import PrismaClient (docs/02-architecture.md §2's
+      // Clean Architecture boundary). In this sandbox, @prisma/client is
+      // a hand-written local-only stub with `any`-typed delegates (real
+      // `prisma generate` cannot run here — see
+      // docs/07-module-2-notes.md §6) — every no-unsafe-* error below is
+      // that stub's imprecision propagating through, not a correctness
       // problem: a genuinely wrong field/model name against the real
       // schema still fails as a TS2339 compile error regardless of this
       // override (`tsc --noEmit` catches those; try it). Scoped narrowly
-      // to repository files and to the unsafe-* family specifically, so
-      // this doesn't quiet unrelated issues elsewhere.
-      files: ['**/*.repository.ts'],
+      // to these files and to the unsafe-* family specifically, so this
+      // doesn't quiet unrelated issues elsewhere.
+      files: ['**/*.repository.ts', 'src/lib/ownership.ts'],
       rules: {
         '@typescript-eslint/no-unsafe-assignment': 'off',
         '@typescript-eslint/no-unsafe-member-access': 'off',

@@ -7,6 +7,83 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 3B — Teacher Dashboard & Course Management
+**Status:** Approved and frozen.
+
+### Pre-freeze verification pass
+Three security/correctness items verified against the actual code (and
+live requests) before freezing — all three were already correctly
+implemented, no corrections needed:
+- Ownership checks precede every mutation across all Module 3B services,
+  and every controller derives the acting teacher's identity from the
+  verified JWT (`req.user!.id`), never from client-supplied IDs — the
+  actual IDOR risk this item is about. Verified by inspecting every
+  controller method (6 files) and every service's public methods, plus a
+  live check that a STUDENT token gets 403 at the RBAC layer on
+  representative endpoints.
+- Upload-URL generation is confirmed, by exact source line order, to
+  happen strictly after ownership verification in both
+  `LecturesService` and `NotesService`.
+- Only-PUBLISHED-visible-to-students is confirmed still true at the
+  query level in Module 3A's frozen `courses.repository.ts` and
+  `search.repository.ts` — untouched by Module 3B.
+
+See `docs/09-module-3b-notes.md §7` for the complete write-up.
+
+### Added
+- **Backend**, 5 new modules (`media`, `content-management`, `quizzes`,
+  `announcements`, plus teacher-write extensions to `courses`) — create/
+  edit/Draft-Publish-Archive courses, course thumbnail upload, chapters/
+  modules/lectures/notes CRUD with numeric move-up/move-down reordering,
+  signed video/PDF upload URLs, lecture status control (Draft/Published/
+  Hidden), quiz authoring (questions + options, with validation), and
+  announcement CRUD with student notification fan-out. 86 new backend
+  tests (203 total).
+- **Frontend**: Teacher Dashboard home (basic course statistics, recent
+  announcements), My Courses, Create Course, Edit Course (thumbnail
+  upload, status controls), Course Builder (the full chapter → module →
+  {lectures, notes, quizzes} tree, with inline editing, move-up/down
+  reordering, and a dynamic quiz builder), and Announcements management.
+- Two new Course-scoped read endpoints added mid-module once the frontend
+  actually needed them: `GET /courses/mine/:id` (single course, any
+  status, for editing — distinct from Module 3A's public,
+  published-only, slug-based `GET /courses/{slug}`) and
+  `GET /courses/{id}/content` (the full content tree, every lecture
+  status, for the Course Builder).
+
+### Fixed (caught during implementation)
+- A Swagger JSDoc description containing literal `{...}` broke YAML
+  parsing for an entire route file, silently dropping some of its
+  endpoints from the generated OpenAPI spec. Only surfaced by booting the
+  server and reading its stdout — `tsc`/lint/tests all stayed green
+  through this. Fixed, and re-verified by regenerating the spec and
+  confirming the affected endpoint's presence and description.
+- A stray `.env` file left over from manual live-testing silently caused
+  2 of Module 2's `env.test.ts` cases to stop working correctly (`dotenv`
+  refilling a deliberately-deleted variable from disk). Not an application
+  bug — a testing-hygiene one, documented in
+  `docs/09-module-3b-notes.md §4` so it isn't mistaken for a regression
+  later.
+
+### Design decisions of note
+- Reordering is numeric move-up/move-down (swap with the adjacent
+  sibling), not drag-and-drop — per explicit instruction.
+- Uploads are signed-PUT direct-to-R2, never proxied through Express;
+  `lib/r2.ts` gained new PUT-signing exports additively (existing GET
+  exports untouched), and a new `lib/r2Public.ts` handles the separate
+  public/CDN bucket for images.
+- Teacher-facing content management is a wholly separate module from
+  Module 3A's frozen student-facing `content` module — same schema,
+  no shared code.
+- Editing a quiz replaces its entire question set rather than supporting
+  per-question PATCH — matches how a teacher actually edits a quiz form
+  in one submission, and Question/QuestionOption were already designed
+  (Module 1) as cascade-deleted structural children of Quiz.
+
+See `docs/09-module-3b-notes.md` for the complete write-up.
+
+---
+
 ## Module 3A — Student Learning Experience
 **Status:** Approved and frozen.
 

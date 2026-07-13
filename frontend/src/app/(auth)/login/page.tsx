@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
-import { ApiClientError } from '@/lib/api-client';
+import { apiRequest, ApiClientError } from '@/lib/api-client';
+import { getStoredTokens } from '@/lib/auth-storage';
+import type { PublicUser } from '@/types/api';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -21,7 +23,14 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      router.push('/student/dashboard');
+      // Role-based redirect: `login()` itself returns void (Module 3A,
+      // frozen — not changing its signature for this), so the freshly
+      // stored token is used directly for one more call rather than
+      // relying on the `user` from useAuth(), which wouldn't reflect the
+      // just-completed login until the next render.
+      const { accessToken } = getStoredTokens();
+      const me = await apiRequest<PublicUser>('/users/me', { accessToken: accessToken ?? undefined });
+      router.push(me.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard');
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);

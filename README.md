@@ -22,8 +22,8 @@ oasis-platform/
 
 ## Project status
 
-**Modules 1, 2, and 3A are all approved and FROZEN — together the source
-of truth for every module going forward.**
+**Modules 1, 2, 3A, and 3B are all approved and FROZEN — together the
+source of truth for every module going forward.**
 
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
 real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
@@ -50,6 +50,23 @@ fixed two real gaps. See
 [`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) for the
 complete write-up.
 
+**Module 3B (Teacher Dashboard & Course Management): approved and
+frozen.** Course creation/editing/Draft-Publish-Archive with thumbnail
+upload, full content management (chapters/modules/lectures/notes with
+numeric move-up/down reordering, signed video/PDF uploads, lecture status
+control), quiz authoring, and announcements with student notification
+fan-out — 5 new backend modules (203 tests total) and a real
+Teacher-facing frontend (Dashboard, My Courses, Create/Edit Course, Course
+Builder, Announcements). Caught and fixed a real bug during live testing:
+a Swagger JSDoc YAML syntax error that was silently dropping endpoints
+from the generated API spec. Went through a pre-freeze verification pass
+(cross-teacher ownership on every write, upload-URL generation ordered
+strictly after ownership checks, published-only visibility for students)
+that confirmed all three were already correctly implemented — no
+corrections needed. See
+[`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) for the
+complete write-up.
+
 See also [`CHANGELOG.md`](CHANGELOG.md) for a chronological record and
 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for the living, single-source-of-truth
 architectural summary every future module should be checked against.
@@ -69,6 +86,7 @@ architectural summary every future module should be checked against.
 | [`docs/06-deployment-and-docker.md`](docs/06-deployment-and-docker.md) | Deployment strategy, Docker setup, environment variables |
 | [`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) | Module 2 design decisions, schema addendum, and what was actually built/tested |
 | [`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) | Module 3A design decisions and what was actually built/tested |
+| [`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) | Module 3B design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -150,7 +168,7 @@ cd frontend && npm run dev    # http://localhost:3000 (separate terminal)
 ### 6. Verify
 - Backend health check: `curl http://localhost:4000/health`
 - API docs: `http://localhost:4000/api/v1/docs`
-- Run the test suite: `cd backend && npm test` (123 tests)
+- Run the test suite: `cd backend && npm test` (203 tests)
 - Frontend: `http://localhost:3000`
 
 ---
@@ -236,8 +254,9 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Modules 1, 2, and 3A are frozen and are the project's permanent
+Modules 1, 2, 3A, and 3B are frozen and are the project's permanent
 architecture — every module since builds on the `AuthRepository` pattern,
 the middleware pipeline, the error envelope, the env-validation approach,
-`optionalAuthenticate`, and the two-tier signed-URL TTL convention
-established there, rather than redesigning them. Module 3B is next.
+`optionalAuthenticate`, the two-tier signed-URL TTL convention, the
+ownership-assertion-before-every-write pattern, and numeric move-up/down
+reordering established there, rather than redesigning them.

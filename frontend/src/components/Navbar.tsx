@@ -53,17 +53,23 @@ export function Navbar() {
           {isLoading ? null : isAuthenticated ? (
             <>
               <Link
-                href="/student/dashboard"
+                href={user?.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard'}
                 className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
               >
                 Dashboard
               </Link>
-              <Link
-                href="/student/profile"
-                className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
-              >
-                {user?.fullName.split(' ')[0]}
-              </Link>
+              {user?.role === 'STUDENT' ? (
+                <Link
+                  href="/student/profile"
+                  className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
+                >
+                  {user?.fullName.split(' ')[0]}
+                </Link>
+              ) : (
+                <span className="hidden text-sm font-medium text-neutral-500 sm:inline">
+                  {user?.fullName.split(' ')[0]}
+                </span>
+              )}
               <Button variant="ghost" size="sm" onClick={() => void handleLogout()}>
                 Log out
               </Button>

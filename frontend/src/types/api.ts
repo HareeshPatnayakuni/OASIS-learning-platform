@@ -194,3 +194,153 @@ export interface SearchResults {
   chapters: ChapterSearchHit[];
   modules: ModuleSearchHit[];
 }
+
+// ── Teacher: Course management (Module 3B) ──────────────────────────
+
+export interface TeacherCourseSummary {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  board: CatalogRef;
+  classGrade: ClassGrade;
+  subject: CatalogRef;
+  teacher: TeacherRef;
+  price: number;
+  discountPrice: number | null;
+  thumbnailUrl: string | null;
+  status: CourseStatus;
+  createdAt: string;
+  updatedAt: string;
+  enrollmentCount: number;
+  totalLectures: number;
+  publishedLectures: number;
+}
+
+// ── Teacher: Content management (Module 3B) ─────────────────────────
+
+export interface TeacherChapter {
+  id: string;
+  courseId: string;
+  title: string;
+  slug: string;
+  order: number;
+}
+
+export interface TeacherContentModule {
+  id: string;
+  chapterId: string;
+  title: string;
+  order: number;
+}
+
+export interface TeacherLecture {
+  id: string;
+  moduleId: string;
+  title: string;
+  order: number;
+  durationSec: number | null;
+  status: LectureStatus;
+  r2ObjectKey: string;
+}
+
+export interface TeacherNote {
+  id: string;
+  moduleId: string;
+  title: string;
+  order: number;
+  r2ObjectKey: string;
+}
+
+export interface TeacherQuizSummary {
+  id: string;
+  title: string;
+  questionCount: number;
+}
+
+export interface TeacherModuleWithContent extends TeacherContentModule {
+  lectures: TeacherLecture[];
+  notes: TeacherNote[];
+  quizzes: TeacherQuizSummary[];
+}
+
+export interface TeacherChapterWithContent extends TeacherChapter {
+  modules: TeacherModuleWithContent[];
+}
+
+export interface UploadIssuedResult {
+  uploadUrl: string;
+  expiresInSeconds: number;
+}
+
+export interface CreateLectureResult {
+  lecture: TeacherLecture;
+  uploadUrl: string;
+  expiresInSeconds: number;
+}
+
+export interface CreateNoteResult {
+  note: TeacherNote;
+  uploadUrl: string;
+  expiresInSeconds: number;
+}
+
+// ── Teacher: Quizzes (Module 3B) ─────────────────────────────────────
+
+export interface QuestionOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  order: number;
+  options: QuestionOption[];
+}
+
+export interface QuizDetail {
+  id: string;
+  moduleId: string;
+  title: string;
+  passPercent: number;
+  questions: QuizQuestion[];
+}
+
+export interface QuestionOptionDraft {
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface QuestionDraft {
+  text: string;
+  options: QuestionOptionDraft[];
+}
+
+// ── Teacher: Announcements (Module 3B) ──────────────────────────────
+
+export interface TeacherAnnouncement {
+  id: string;
+  courseId: string;
+  authorId: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+// ── Media (Module 3B) ────────────────────────────────────────────────
+
+export type MediaPurposeValue =
+  | 'COURSE_THUMBNAIL'
+  | 'TEACHER_AVATAR'
+  | 'TESTIMONIAL_PHOTO'
+  | 'ACADEMY_LOGO'
+  | 'GENERIC';
+
+export interface CreateMediaResult {
+  id: string;
+  publicUrl: string;
+  uploadUrl: string;
+  expiresInSeconds: number;
+}

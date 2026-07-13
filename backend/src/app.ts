@@ -13,10 +13,15 @@ import { errorHandler } from './middleware/errorHandler';
 import { authRouter } from './modules/auth/auth.routes';
 import { catalogRouter } from './modules/catalog/catalog.routes';
 import { coursesRouter } from './modules/courses/courses.routes';
+import { teacherCoursesRouter } from './modules/courses/courses.teacher.routes';
 import { contentRouter } from './modules/content/content.routes';
+import { contentManagementRouter } from './modules/content-management/content-management.routes';
 import { enrollmentsRouter } from './modules/enrollments/enrollments.routes';
 import { usersRouter } from './modules/users/users.routes';
 import { searchRouter } from './modules/search/search.routes';
+import { mediaRouter } from './modules/media/media.routes';
+import { quizzesRouter } from './modules/quizzes/quizzes.routes';
+import { teacherAnnouncementsRouter } from './modules/announcements/announcements.routes';
 import { openapiSpec } from './docs/swagger';
 
 export function createApp(): Express {
@@ -89,11 +94,20 @@ export function createApp(): Express {
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1', catalogRouter); // GET /boards, /class-grades, /subjects
+  // IMPORTANT: teacherCoursesRouter (GET /courses/mine, POST /courses, ...)
+  // must be mounted BEFORE the frozen Module 3A coursesRouter at the same
+  // base path — otherwise Express would match "mine" as a :slug value on
+  // coursesRouter's GET /:slug route. See courses.teacher.routes.ts.
+  app.use('/api/v1/courses', teacherCoursesRouter);
   app.use('/api/v1/courses', coursesRouter);
   app.use('/api/v1', contentRouter); // GET/PUT /lectures/:id/*, GET /notes/:id/*
+  app.use('/api/v1', contentManagementRouter); // POST/PATCH/DELETE chapters, modules, lectures, notes
+  app.use('/api/v1', quizzesRouter);
+  app.use('/api/v1', teacherAnnouncementsRouter);
   app.use('/api/v1/enrollments', enrollmentsRouter);
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/search', searchRouter);
+  app.use('/api/v1/media', mediaRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
