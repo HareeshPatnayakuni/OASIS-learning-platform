@@ -28,7 +28,16 @@ const options: swaggerJsdoc.Options = {
         },
       },
     },
-    tags: [{ name: 'Auth', description: 'Registration, login, tokens, password/email verification' }],
+    tags: [
+      { name: 'System', description: 'Health checks and operational endpoints' },
+      { name: 'Auth', description: 'Registration, login, tokens, password/email verification' },
+      { name: 'Catalog', description: 'Boards, Class Grades, Subjects — filter options for Browse Courses' },
+      { name: 'Courses', description: 'Browse and view course details with full syllabus' },
+      { name: 'Content', description: 'Signed video/note URLs and lecture progress — enrollment-gated' },
+      { name: 'Enrollments', description: "A student's own enrolled courses and computed progress" },
+      { name: 'Users', description: 'Profile, Learning Streak, Continue Watching, Announcements' },
+      { name: 'Search', description: 'Search across courses, chapters, and modules' },
+    ],
   },
   apis: [path.join(__dirname, '../modules/**/*.routes.ts'), path.join(__dirname, '../modules/**/*.routes.js')],
 };

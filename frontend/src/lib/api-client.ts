@@ -40,6 +40,11 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: { page: number; limit: number; total: number };
+}
+
 /**
  * Every response the backend sends follows one of two shapes (per
  * docs/04-api-design.md §1): `{ data: ... }` on success, or
@@ -51,6 +56,23 @@ export async function apiRequest<TResponse>(
   path: string,
   options: RequestOptions = {},
 ): Promise<TResponse> {
+  const json = await apiRequestEnvelope<{ data: TResponse }>(path, options);
+  return json.data;
+}
+
+/** For paginated list endpoints, which return `{ data: [...], meta: {...} }`
+ * — callers need `meta` too, not just the array. */
+export async function apiRequestPaginated<TItem>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<PaginatedResponse<TItem>> {
+  return apiRequestEnvelope<PaginatedResponse<TItem>>(path, options);
+}
+
+async function apiRequestEnvelope<TEnvelope>(
+  path: string,
+  options: RequestOptions,
+): Promise<TEnvelope> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
     headers: {
@@ -62,7 +84,7 @@ export async function apiRequest<TResponse>(
   });
 
   if (response.status === 204) {
-    return undefined as TResponse;
+    return undefined as TEnvelope;
   }
 
   const json: unknown = await response.json();
@@ -71,5 +93,5 @@ export async function apiRequest<TResponse>(
     throw new ApiClientError(response.status, json as ApiErrorBody);
   }
 
-  return (json as { data: TResponse }).data;
+  return json as TEnvelope;
 }

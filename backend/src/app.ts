@@ -11,6 +11,12 @@ import { generalRateLimiter } from './middleware/rateLimiters';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { errorHandler } from './middleware/errorHandler';
 import { authRouter } from './modules/auth/auth.routes';
+import { catalogRouter } from './modules/catalog/catalog.routes';
+import { coursesRouter } from './modules/courses/courses.routes';
+import { contentRouter } from './modules/content/content.routes';
+import { enrollmentsRouter } from './modules/enrollments/enrollments.routes';
+import { usersRouter } from './modules/users/users.routes';
+import { searchRouter } from './modules/search/search.routes';
 import { openapiSpec } from './docs/swagger';
 
 export function createApp(): Express {
@@ -82,6 +88,12 @@ export function createApp(): Express {
   }
 
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1', catalogRouter); // GET /boards, /class-grades, /subjects
+  app.use('/api/v1/courses', coursesRouter);
+  app.use('/api/v1', contentRouter); // GET/PUT /lectures/:id/*, GET /notes/:id/*
+  app.use('/api/v1/enrollments', enrollmentsRouter);
+  app.use('/api/v1/users', usersRouter);
+  app.use('/api/v1/search', searchRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

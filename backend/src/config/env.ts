@@ -56,12 +56,12 @@ const envSchema = z.object({
   R2_ACCOUNT_ID: z.string().optional(),
   R2_PRIVATE_ACCESS_KEY_ID: z.string().optional(),
   R2_PRIVATE_SECRET_ACCESS_KEY: z.string().optional(),
-  R2_PRIVATE_BUCKET_NAME: z.string().optional(),
+  R2_PRIVATE_BUCKET_NAME: z.string().default('oasis-private-content'),
 
   // R2 — public/media bucket
   R2_PUBLIC_ACCESS_KEY_ID: z.string().optional(),
   R2_PUBLIC_SECRET_ACCESS_KEY: z.string().optional(),
-  R2_PUBLIC_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_BUCKET_NAME: z.string().default('oasis-public-media'),
   R2_PUBLIC_CDN_BASE_URL: z.string().optional(),
 
   RAZORPAY_KEY_ID: z.string().optional(),

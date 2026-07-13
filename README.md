@@ -22,8 +22,8 @@ oasis-platform/
 
 ## Project status
 
-**Module 1 (v1.1) and Module 2 are both approved and FROZEN — together the
-source of truth for every module going forward.**
+**Modules 1, 2, and 3A are all approved and FROZEN — together the source
+of truth for every module going forward.**
 
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
 real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
@@ -37,10 +37,29 @@ request size limits, fail-fast env validation, a Swagger on/off switch,
 [`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) for the complete
 write-up.
 
+**Module 3A (Student Learning Experience): approved and frozen.** Browse/
+search/filter courses, course details with full syllabus, enrollment-gated
+signed video/note URLs, resumable video playback with progress tracking,
+Learning Streak, Continue Watching, Announcements, and Profile — real
+backend endpoints (6 new modules, 123 tests total) and a real frontend
+(auth forms, Browse Courses, Course Details, Search, Student Dashboard, My
+Courses, Course Player, Profile). Went through a pre-freeze verification
+pass (progress-percentage clamping, streak anti-inflation, draft/hidden
+lecture access, signed-URL expiry, full Swagger coverage) that found and
+fixed two real gaps. See
+[`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) for the
+complete write-up.
+
+See also [`CHANGELOG.md`](CHANGELOG.md) for a chronological record and
+[`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for the living, single-source-of-truth
+architectural summary every future module should be checked against.
+
 ## Where to start reading
 
 | Doc | Purpose |
 |---|---|
+| [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) | **Start here** — living summary of every architectural decision, convention, and deferred feature |
+| [`CHANGELOG.md`](CHANGELOG.md) | Chronological record of what shipped in each module |
 | [`docs/01-srs-and-requirements.md`](docs/01-srs-and-requirements.md) | Software Requirements Specification, functional + non-functional requirements |
 | [`docs/02-architecture.md`](docs/02-architecture.md) | System architecture, folder structure, clean-architecture layering, user flows, RBAC, media strategy, observability |
 | [`docs/03-database-design.md`](docs/03-database-design.md) | ER diagram, schema rationale, soft-delete policy, indexing strategy |
@@ -49,6 +68,7 @@ write-up.
 | [`docs/05-roadmap-and-milestones.md`](docs/05-roadmap-and-milestones.md) | Module-by-module build plan from here to launch |
 | [`docs/06-deployment-and-docker.md`](docs/06-deployment-and-docker.md) | Deployment strategy, Docker setup, environment variables |
 | [`docs/07-module-2-notes.md`](docs/07-module-2-notes.md) | Module 2 design decisions, schema addendum, and what was actually built/tested |
+| [`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) | Module 3A design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -76,8 +96,10 @@ without a rewrite.
 - Docker & Docker Compose (for local Postgres — or point `DATABASE_URL` at
   any Postgres 16+ instance you already have)
 - A Cloudflare account with **two** R2 buckets created (one private, one
-  public/CDN-fronted) — see `docs/06-deployment-and-docker.md` (not needed
-  to run Auth-only Module 2 locally; R2 isn't touched until Module 3/4)
+  public/CDN-fronted) — see `docs/06-deployment-and-docker.md`. Not
+  required to run the app locally: without R2 credentials configured,
+  signed-URL endpoints return a clear `R2NotConfiguredError` instead of a
+  confusing SDK failure (`backend/src/lib/r2.ts`) — everything else works.
 - A Razorpay account (test-mode keys — not needed until Module 7)
 
 ### 1. Clone and install
@@ -112,8 +134,12 @@ npm run prisma:migrate:dev -- --name init
 npm run seed
 ```
 The seed script populates the initial Boards (CBSE, ICSE, State Board),
-Class Grades (4–10), Subjects (Mathematics, Science, English), and a
-placeholder `AcademySettings` row.
+Class Grades (4–10), Subjects (Mathematics, Science, English), a
+placeholder `AcademySettings` row, a demo teacher and student account
+(`teacher@oasis.example.com` / `student@oasis.example.com`, both
+`Teacher@123` / `Student@123`), two published courses with a full
+syllabus, a demo enrollment with partial progress already recorded, and a
+starter Learning Streak — enough to actually use the app end to end.
 
 ### 5. Run the backend and frontend
 ```bash
@@ -124,7 +150,7 @@ cd frontend && npm run dev    # http://localhost:3000 (separate terminal)
 ### 6. Verify
 - Backend health check: `curl http://localhost:4000/health`
 - API docs: `http://localhost:4000/api/v1/docs`
-- Run the test suite: `cd backend && npm test` (77 tests)
+- Run the test suite: `cd backend && npm test` (123 tests)
 - Frontend: `http://localhost:3000`
 
 ---
@@ -210,9 +236,8 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Modules 1 and 2 are both frozen and are now the project's permanent
-architecture — future modules build on the `AuthRepository` pattern, the
-middleware pipeline, the error envelope, and the env-validation approach
-established here, rather than redesigning them. Module 3 is next: Board/
-Class/Subject catalog endpoints and Course/Chapter/Module/Lecture/Note/Quiz
-CRUD, per `docs/05-roadmap-and-milestones.md`.
+Modules 1, 2, and 3A are frozen and are the project's permanent
+architecture — every module since builds on the `AuthRepository` pattern,
+the middleware pipeline, the error envelope, the env-validation approach,
+`optionalAuthenticate`, and the two-tier signed-URL TTL convention
+established there, rather than redesigning them. Module 3B is next.

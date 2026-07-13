@@ -11,8 +11,10 @@
 # else in the monorepo), so build it from the frontend/ directory itself:
 #   docker build -f ../docker/frontend.Dockerfile -t oasis-frontend .
 #
-# Requires `output: "standalone"` in next.config.ts (already set) — that's
-# what produces the .next/standalone directory this Dockerfile copies from.
+# Requires `.next/standalone` output, which next.config.ts only enables
+# when DOCKER_BUILD=true (set below) — see that file for why it's gated
+# rather than always-on: `output: "standalone"` and plain `next start`
+# (what a developer runs locally) don't coexist.
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -21,6 +23,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+ENV DOCKER_BUILD=true
 RUN npm run build
 
 FROM node:20-alpine AS runner
