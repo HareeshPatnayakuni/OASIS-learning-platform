@@ -6,7 +6,10 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: end of Module 3D.
+Updated after every approved module. Last updated: after the
+cross-platform maintenance pass following Module 3D (see
+`docs/12-cross-platform-notes.md`) — not a feature module itself, no
+module-status change.
 
 ---
 
@@ -475,6 +478,20 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   a gap in `docs/08-module-3a-notes.md §5`, not silently skipped) — if
   that changes, `AuthProvider`'s refresh-on-401 logic is the highest-value
   starting point.
+- **`package.json` scripts must never use shell-specific syntax**
+  (env-var-assignment prefixes like `VAR=value cmd`, `&&` chains relying
+  on a specific shell's semantics, etc.) — this project is meant to set
+  up on Windows Command Prompt/PowerShell as well as bash/zsh/sh, and
+  shell syntax is exactly where those diverge. If a script genuinely
+  needs to set an environment variable or do anything more than "run
+  this one command with these args," write a small `.js` file under
+  `backend/scripts/` using Node's own `child_process`/`path` APIs (see
+  `backend/scripts/run-seed.js` for the template — this is the same
+  technique the `cross-env` package uses internally, reimplemented
+  directly rather than adding a dependency for something this small) and
+  point the `package.json` script at `node scripts/that-file.js`. See
+  `docs/12-cross-platform-notes.md` for the full incident this pattern
+  fixed (the `seed` script failed outright on Windows before this).
 
 ## 11. Known sandbox limitation (not a code issue)
 

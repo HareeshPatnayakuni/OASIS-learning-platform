@@ -19,7 +19,7 @@
     "prisma:migrate:dev": "prisma migrate dev --schema=../database/schema.prisma",
     "prisma:migrate:deploy": "prisma migrate deploy --schema=../database/schema.prisma",
     "prisma:studio": "prisma studio --schema=../database/schema.prisma",
-    "seed": "NODE_PATH=./node_modules tsx ../database/seed.ts"
+    "seed": "node scripts/run-seed.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.699.0",

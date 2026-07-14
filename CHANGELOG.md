@@ -7,6 +7,38 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Maintenance — Cross-Platform Development Compatibility
+**Status:** Complete. Not a feature module — no application behavior changed.
+
+Fixed `backend/package.json`'s `seed` script, which used
+bash/zsh/sh-only syntax (`NODE_PATH=./node_modules tsx ...`) and failed
+outright on Windows Command Prompt/PowerShell with `'NODE_PATH' is not
+recognized as an internal or external command`.
+
+**Root cause:** `database/seed.ts` is a sibling of `backend/`, not a
+descendant, so Node can't resolve `backend/node_modules`' packages
+(`bcrypt`, `@prisma/client`) from it without help — `NODE_PATH` is the
+right mechanism, but the previous fix set it using shell-only syntax.
+
+**Fix:** a new `backend/scripts/run-seed.js` (~30 lines, zero new
+dependencies — only Node's built-in `node:path`/`node:child_process`)
+sets `NODE_PATH` programmatically via `child_process.spawnSync`'s `env`
+option instead of shell syntax, then runs the seed script through it.
+`backend/package.json`'s `seed` script is now
+`"node scripts/run-seed.js"` — a plain command with no shell-specific
+syntax at all, so Command Prompt, PowerShell, bash, zsh, and sh all run
+it identically. No `NODE_PATH` configuration or `package.json` editing
+required from anyone after cloning; `npm run seed` is unchanged from the
+user's perspective. No README.md changes needed (the command it
+documents didn't change). Verified: full 238-test backend suite,
+`tsc`, lint, and build all pass unmodified; `npm run seed` re-tested
+live and reaches the exact same result as before the fix, with a
+correctly-propagated exit code.
+
+See `docs/12-cross-platform-notes.md` for the complete write-up.
+
+---
+
 ## Module 3D — Branding & UI Identity
 **Status:** Approved and frozen.
 

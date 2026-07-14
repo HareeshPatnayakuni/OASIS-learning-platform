@@ -12,13 +12,18 @@ import { randomBytes } from 'node:crypto';
  * Teacher-authoring modules, neither of which exist yet — see
  * PROJECT_MEMORY.md §8. Idempotent — safe to re-run.
  *
- * Run with: npm run seed  (from backend/), which resolves to
- * `NODE_PATH=./node_modules tsx ../database/seed.ts` per backend/package.json
- * — the NODE_PATH is required because database/ is a sibling of backend/,
- * not a descendant, so Node can't otherwise resolve backend's
+ * Run with: npm run seed  (from backend/), which runs
+ * `node scripts/run-seed.js` per backend/package.json — a small wrapper
+ * that sets NODE_PATH to backend/node_modules programmatically (via
+ * Node's child_process API, not shell syntax) before running this file
+ * with tsx. The NODE_PATH is needed because database/ is a sibling of
+ * backend/, not a descendant, so Node can't otherwise resolve backend's
  * node_modules (this bit us for real during Module 3A — see
- * docs/08-module-3a-notes.md). The same NODE_PATH is what makes `bcrypt`
- * below resolve too.
+ * docs/08-module-3a-notes.md; the original fix used
+ * `NODE_PATH=./node_modules` shell syntax, which only works on
+ * bash/zsh/sh and fails on Windows — see docs/12-cross-platform-notes.md
+ * for the fix). The same NODE_PATH is what makes `bcrypt` below resolve
+ * too.
  *
  * Demo login credentials (development/staging only — NEVER seed these
  * into a real production database):
