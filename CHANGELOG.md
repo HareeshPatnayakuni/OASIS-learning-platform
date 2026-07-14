@@ -7,6 +7,157 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 3D — Branding & UI Identity
+**Status:** Approved and frozen.
+
+### Pre-freeze verification pass
+Four items verified against the actual code and live requests before
+freezing — no corrections needed for any of them (branding consistency
+across every page, browser title/favicon/manifest/OG/email/Navbar/
+Footer/auth pages, Platform Settings override-with-fallback on every
+touchpoint, and zero backend/schema/API changes — confirmed both by the
+full 238-test suite passing unmodified and by file-modification-time
+analysis showing `lib/email.ts` as the only backend file touched). See
+`docs/11-module-3d-notes.md §9`.
+
+### Added: Master Branding Package
+A permanent `Branding/` package now lives at the repository root — the
+single source of truth for all future OASIS branding (web, mobile,
+brochures, certificates, social, banners). Includes Brand Identity,
+Color Palette (with computed WCAG contrast ratios), Typography, Logo
+Usage (with complete per-file provenance disclosure), and Spacing
+Guidelines documents, plus the full asset set organized into `Logos/`,
+`Favicons/`, and `Social/` folders. Three additional real extractions
+(monochrome icon dark/light, single-color navy icon, monochrome
+wordmark) were found and pulled from the source boards using the same
+pixel-boundary method as every other asset; three assets
+(`OASIS-Logo-Monochrome.png`, `Cover-Image.png`, `LinkedIn-Banner.png`)
+are explicitly disclosed as compositions of real, unaltered pieces
+rather than direct crops. See `docs/11-module-3d-notes.md §10` for the
+complete write-up.
+
+Presentation-only module: no backend logic, database schema, API
+contract, or business rule changed — confirmed by running the full,
+unmodified backend test suite (238 tests) after every edit, and by a
+file-modification-time audit (see the verification pass below).
+
+### Pre-freeze verification pass
+Four items verified against the actual code and live requests before
+freezing — all four were already correctly implemented, no corrections
+needed: no placeholder branding anywhere (grepped for stock colors and
+hardcoded brand text — zero matches outside disclosed fallbacks); browser
+title/favicon/manifest/OG/Twitter/email/Navbar/Footer/auth pages all
+confirmed live; every `logoUrl`/`faviconUrl` usage site follows the
+correct dynamic-with-fallback pattern; zero backend changes confirmed via
+the full 238-test suite plus a file-modification-time audit showing
+`lib/email.ts` as the only backend file touched, with a clear time gap
+before it.
+
+### Added — Master Branding Package
+A permanent `Branding/` folder now lives at the repository root — the
+single source of truth for all future OASIS branding across every
+product (web, mobile, brochures, certificates, social, banners). Five
+guideline documents (Brand Identity, Color Palette with computed WCAG
+contrast ratios, Typography, Logo Usage with complete per-file
+provenance, Spacing Guidelines) plus organized asset folders (`Logos/`,
+`Favicons/`, `Social/`). Three additional real extractions (monochrome
+icon dark/light, single-color navy icon, monochrome wordmark black/gray)
+were found in the source boards and pulled out using the same
+pixel-boundary method as every other asset. Three assets are disclosed
+compositions (a monochrome full-logo lockup, a Cover Image, and a
+LinkedIn Banner) — each explicitly labeled as a composition of real,
+unaltered pieces rather than a direct crop, per `Branding/Brand-Guidelines/Logo-Usage.md §7`.
+No `.svg` vector files are included — none were ever supplied in the
+source material, and auto-tracing was deliberately not attempted (see
+`docs/11-module-3d-notes.md §1` for why).
+
+See `docs/11-module-3d-notes.md §9–10` for the complete write-up.
+
+### Added — Everything else this module shipped
+- **Official OASIS brand palette** applied throughout
+  (`frontend/src/app/globals.css`): Deep Navy `#0B1D3A`, Bright Blue
+  `#1E5BFF`, Fresh Green `#22C55E`, and Teal `#14B8A6` are the exact,
+  unmodified brand hex values; every other shade in the UI's color ramp
+  is a mathematically-derived tint/shade of those, not a separately
+  invented color.
+- **Official typography** — Poppins (headings) + Inter (body),
+  self-hosted via `@fontsource` (real font files as npm packages, not
+  `next/font/google`, which hard-fails in this sandbox with no network
+  path to Google's font CDN).
+- **The actual logo image**, mechanically extracted from the uploaded
+  Branding Package via precise pixel-boundary detection (not a redrawn
+  or recolored approximation — see `docs/11-module-3d-notes.md §1` for
+  the method), now appears in the Navbar, Footer, Home page hero, Login,
+  Register, and Forgot Password pages, the browser favicon (real
+  16/32/48px multi-resolution `.ico`), the Apple touch icon, and the PWA
+  manifest icons. Every placement falls back to these official static
+  files but gives priority to an Admin-uploaded logo via Platform
+  Settings, when one exists.
+- **New Footer component**, mounted once in the root layout, showing
+  academy name/tagline/contact email/phone/social links — all from the
+  same public `GET /settings` the rest of the app already uses, never
+  hardcoded.
+- **Metadata**: Open Graph and Twitter Card fields, a `viewport` export
+  setting `theme-color` to the official Deep Navy, `metadataBase` (fixing
+  a real Next.js build warning), and a new dynamic `manifest.ts` (didn't
+  exist before) — all reading from Platform Settings with the official
+  static values as fallback.
+- **Email templates** (`backend/src/lib/email.ts`) — verification and
+  password-reset emails now use the official tagline and brand colors
+  (Deep Navy header, Bright Blue buttons/links), applied as literal
+  confirmed values rather than a live Settings fetch (deliberate — see
+  Design decisions below).
+
+### Fixed (caught during implementation)
+- A stray Tailwind stock color (`text-blue-600`) bypassing the brand
+  token system on the Home page.
+- Inconsistent tagline capitalization ("Learn From Home" vs. the official
+  "Learn from Home") across `database/seed.ts`, the Home page fallback,
+  and `README.md`.
+- A real WCAG accessibility shortfall: the text color derived from Fresh
+  Green for status messages only reached 3.14:1 contrast against white
+  (below the 4.5:1 AA minimum). Computed and verified a darker shade
+  (5.01:1) for text usage specifically, leaving the lighter, official
+  shade for button backgrounds where it's the correct, sufficiently
+  contrasted choice.
+- The generated `favicon.ico` failed the production build outright the
+  first time — Next.js requires the PNG frames embedded in an `.ico` to
+  be RGBA; the initial RGB-mode file decoded fine in ordinary image
+  tools but failed Turbopack's stricter decoder. Fixed by regenerating in
+  RGBA; re-verified with a full production build afterward, not just by
+  re-reading the file.
+- Two cropping mistakes caught on review of the delivered files: the
+  compact icon+wordmark (light) crop clipped "OASIS" down to "OAS" (a
+  transcription error applying an already-correctly-measured boundary),
+  and the icon-only crop still included the brand board's own "LOGO MARK
+  (SYMBOL)" section header text above the icon. Both re-cropped and
+  re-verified edge-clean; every other extracted asset was independently
+  re-checked at the same time and confirmed already correct.
+
+### Design decisions of note
+- The uploaded Branding Package is a pair of brand *guideline boards*
+  (composite reference sheets), not the individual production asset
+  files (`.svg`/`.png` cutouts) it names as pending deliverables. Rather
+  than guessing crop boundaries by eye or leaving the gap unaddressed,
+  the actual pixel data was analyzed programmatically to find the real,
+  measured edges of each logo variant, then verified after cropping that
+  no edge contains stray content — mechanical extraction of existing
+  pixels, not a redesign, recoloring, or reinterpretation of the mark.
+- Email templates use literal, confirmed brand values rather than a live
+  `AcademySettings` fetch — deliberately, since awaiting a Settings
+  lookup inside `auth.service.ts` before building an email would be a
+  real control-flow change (a new async dependency, a new failure mode)
+  in a module explicitly told not to touch backend logic.
+- Every logo placement uses the same `settings?.logoUrl ?? '/brand/...'`
+  fallback pattern already established for the favicon in Module 3C —
+  an Admin-uploaded custom logo takes priority everywhere automatically;
+  the official extracted assets are what a fresh, unconfigured install
+  shows.
+
+See `docs/11-module-3d-notes.md` for the complete write-up.
+
+---
+
 ## Module 3C — Admin Dashboard & Platform Management
 **Status:** Approved and frozen.
 

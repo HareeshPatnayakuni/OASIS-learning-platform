@@ -4,12 +4,15 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { Button } from '@/components/ui/Button';
 import { apiRequest, ApiClientError } from '@/lib/api-client';
 import type { CatalogRef, ClassGrade } from '@/types/api';
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const settings = usePlatformSettings();
+  const academyName = settings?.academyName ?? 'OASIS';
   const router = useRouter();
 
   const [fullName, setFullName] = useState('');
@@ -67,8 +70,16 @@ export default function RegisterPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
+        <Link href="/" className="mb-6 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote/static logo URL, domain not known at build time */}
+          <img
+            src={settings?.logoUrl ?? '/brand/oasis-logo-icon-wordmark-light.png'}
+            alt={academyName}
+            className="h-10 w-auto"
+          />
+        </Link>
         <h1 className="mb-1 text-2xl font-semibold text-neutral-900">Create your account</h1>
-        <p className="mb-6 text-sm text-neutral-500">Start learning with OASIS today.</p>
+        <p className="mb-6 text-sm text-neutral-500">Start learning with {academyName} today.</p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div>

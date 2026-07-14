@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import { Button } from '@/components/ui/Button';
 import { apiRequest, ApiClientError } from '@/lib/api-client';
 import { getStoredTokens } from '@/lib/auth-storage';
@@ -11,6 +12,8 @@ import type { PublicUser } from '@/types/api';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const settings = usePlatformSettings();
+  const academyName = settings?.academyName ?? 'OASIS';
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,8 +54,16 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
+        <Link href="/" className="mb-6 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote/static logo URL, domain not known at build time */}
+          <img
+            src={settings?.logoUrl ?? '/brand/oasis-logo-icon-wordmark-light.png'}
+            alt={academyName}
+            className="h-10 w-auto"
+          />
+        </Link>
         <h1 className="mb-1 text-2xl font-semibold text-neutral-900">Log in</h1>
-        <p className="mb-6 text-sm text-neutral-500">Welcome back to OASIS.</p>
+        <p className="mb-6 text-sm text-neutral-500">Welcome back to {academyName}.</p>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div>
@@ -102,7 +113,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-neutral-500">
-          New to OASIS?{' '}
+          New to {academyName}?{' '}
           <Link href="/register" className="font-medium text-brand-600 hover:underline">
             Create an account
           </Link>

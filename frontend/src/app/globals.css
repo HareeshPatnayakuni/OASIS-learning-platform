@@ -1,29 +1,67 @@
 @import "tailwindcss";
+@import "@fontsource/poppins/400.css";
+@import "@fontsource/poppins/500.css";
+@import "@fontsource/poppins/600.css";
+@import "@fontsource/poppins/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
 
-  /* OASIS brand tokens — deep indigo (trust, academic authority) paired
-     with a warm amber accent (energy, calls-to-action). Chosen once here
-     and reused via Tailwind utility classes (bg-brand-*, text-accent-*)
-     rather than picked ad hoc per component, so the whole product reads
-     as one coherent product instead of a pile of individually-styled
-     screens. See docs/09-module-3a-notes.md for the rationale. */
-  --color-brand-50: #eef2f9;
-  --color-brand-100: #d7e1f0;
-  --color-brand-400: #3a5a8c;
-  --color-brand-500: #23416b;
-  --color-brand-600: #1c3457;
-  --color-brand-700: #162943;
-  --color-brand-900: #0f1b2e;
+  /* ═══════════════════════════════════════════════════════════════
+     OFFICIAL OASIS BRAND PALETTE (Module 3D — docs/11-module-3d-notes.md)
+     Source of truth: the uploaded Branding Package. Five colors are
+     specified exactly there; every other shade below is a mathematical
+     tint/shade derived FROM those five (simple linear mix toward white
+     or toward Deep Navy), not a separately invented color — needed
+     because a real UI needs hover states, subtle backgrounds, and
+     disabled states that a 5-swatch brand sheet doesn't itemize.
+     brand-600 and brand-900 (Bright Blue / Deep Navy) and accent-500
+     (Fresh Green) are the exact, unmodified brand hex values; nothing
+     here recolors or reinterprets them.
+     ═══════════════════════════════════════════════════════════════ */
+  --color-brand-50: #f2f5ff;
+  --color-brand-100: #e0e8ff;
+  --color-brand-400: #83a5ff;
+  --color-brand-500: #4b7cff;
+  --color-brand-600: #1e5bff; /* Bright Blue — official, exact (Learning, Clarity) */
+  --color-brand-700: #153fa6;
+  --color-brand-900: #0b1d3a; /* Deep Navy — official, exact (Trust, Stability) */
 
-  --color-accent-400: #f7b955;
-  --color-accent-500: #f0a52e;
-  --color-accent-600: #d68c1a;
+  --color-accent-400: #85dfa6;
+  --color-accent-500: #22c55e; /* Fresh Green — official, exact (Growth, Success) */
+  --color-accent-600: #1da750;
 
-  --color-success-500: #16a34a;
-  --color-success-600: #15803d;
+  /* Fresh Green doubles as the success color too — the brand sheet
+     itself labels it "Growth, Success", so reusing it for
+     success/positive UI states (not just CTAs) matches the intended
+     semantics rather than picking a second, unrelated green.
+     success-600 is deliberately a darker mix than accent-600 (which
+     shares its value with success-600 would only be): success-600 is
+     used as small status-message TEXT elsewhere in the app, which needs
+     WCAG AA's 4.5:1 contrast ratio on white — the button-background
+     shade (accent-600, #1DA750) only reaches 3.14:1 there. Computed by
+     mixing Fresh Green further toward black until 4.5:1 was cleared;
+     verified with the standard relative-luminance formula, not eyeballed. */
+  --color-success-50: #eafcf1;
+  --color-success-500: #22c55e;
+  --color-success-600: #16803d;
+
+  /* Teal — official, exact (Balance, Focus). Used sparingly (e.g. the
+     brand gradient, a secondary badge tone) rather than forced into
+     every component; the brand sheet itself uses it the same way,
+     as one stop in a green→teal→blue gradient, not as a primary UI color. */
+  --color-teal-500: #14b8a6;
+
+  /* Light Gray (#F1F5F9) isn't listed as its own token: Tailwind's
+     stock neutral-50/100 (already used throughout for section
+     backgrounds, table headers, etc. since Module 3A) are close enough
+     to be visually indistinguishable from it, so introducing a
+     parallel gray scale for a one-swatch difference would be exactly
+     the kind of redesign this module is not meant to do. */
 }
 
 @theme inline {
@@ -42,14 +80,33 @@
   --color-accent-500: var(--color-accent-500);
   --color-accent-600: var(--color-accent-600);
 
+  --color-success-50: var(--color-success-50);
   --color-success-500: var(--color-success-500);
   --color-success-600: var(--color-success-600);
 
-  /* System font stack — see src/app/layout.tsx for why next/font/google
-     isn't used. This is the same stack GitHub/Tailwind's own docs ship. */
+  --color-teal-500: var(--color-teal-500);
+
+  /* Official typography (Branding Package): Poppins for headings, Inter
+     for body text — self-hosted via @fontsource (real WOFF2 files
+     installed as npm packages, imported above), not next/font/google.
+     next/font/google was tried first and hard-fails in this sandbox
+     (403 fetching fonts.googleapis.com at build time — no network
+     access to Google's font CDN here); @fontsource sidesteps this
+     entirely since the actual font files are npm package assets
+     resolved from the registry, not fetched from Google at build or
+     runtime. This is also a strictly better fit for the reasoning that
+     originally kept this project on system fonts (avoiding a
+     third-party origin serving content to end users) — @fontsource is
+     genuinely self-hosted, not merely build-time-cached. See
+     docs/11-module-3d-notes.md. System-font fallbacks are kept at the
+     end of each stack so a build without these packages installed
+     still renders reasonably. */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-heading:
+    "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
     monospace;
@@ -66,4 +123,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Headings use the brand's primary typeface throughout — applied once
+   here rather than per-component, so every h1–h6 automatically gets
+   Poppins without every page needing a `font-heading` class. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
 }

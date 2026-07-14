@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     await prisma.academySettings.create({
       data: {
         academyName: 'OASIS',
-        tagline: 'Learn From Home. Excel Everywhere.',
+        tagline: 'Learn from Home. Excel Everywhere.',
         contactEmail: 'contact@oasis.example.com',
       },
     });

@@ -4,8 +4,11 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { apiRequest } from '@/lib/api-client';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 
 export default function ForgotPasswordPage() {
+  const settings = usePlatformSettings();
+  const academyName = settings?.academyName ?? 'OASIS';
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +37,14 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
+        <Link href="/" className="mb-6 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote/static logo URL, domain not known at build time */}
+          <img
+            src={settings?.logoUrl ?? '/brand/oasis-logo-icon-wordmark-light.png'}
+            alt={academyName}
+            className="h-10 w-auto"
+          />
+        </Link>
         <h1 className="mb-1 text-2xl font-semibold text-neutral-900">Reset your password</h1>
         <p className="mb-6 text-sm text-neutral-500">
           Enter your email and we&apos;ll send you a link to reset your password.

@@ -29,8 +29,13 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-30 border-b border-neutral-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="shrink-0 text-lg font-bold tracking-tight text-brand-700">
-          {settings?.academyName ?? 'OASIS'}
+        <Link href="/" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- remote/static logo URL, domain not known at build time */}
+          <img
+            src={settings?.logoUrl ?? '/brand/oasis-logo-icon-wordmark-light.png'}
+            alt={settings?.academyName ?? 'OASIS'}
+            className="h-8 w-auto sm:h-9"
+          />
         </Link>
 
         <Link href="/courses" className="hidden shrink-0 text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline">

@@ -1,6 +1,6 @@
 # OASIS — Online Academy for Smart Integrated Studies
 
-> **Learn From Home. Excel Everywhere.**
+> **Learn from Home. Excel Everywhere.**
 
 OASIS is a coaching-institute learning platform for students in Classes 4–10
 across CBSE, ICSE, and State Board curricula. It lets teachers publish
@@ -17,13 +17,14 @@ oasis-platform/
 ├── database/     Prisma schema, migrations, seed scripts
 ├── docker/       Dockerfiles + docker-compose for local/dev/prod parity
 ├── docs/         Architecture, requirements, API design, roadmap
+├── Branding/     Master Branding Package — logos, favicons, social assets, brand guidelines (Module 3D)
 └── scripts/      One-off ops / maintenance scripts (added from Module 2 onward)
 ```
 
 ## Project status
 
-**Modules 1, 2, 3A, 3B, and 3C are all approved and FROZEN — together the
-source of truth for every module going forward.**
+**Modules 1, 2, 3A, 3B, 3C, and 3D are all approved and FROZEN — together
+the source of truth for every module going forward.**
 
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
 real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
@@ -86,6 +87,28 @@ each with a live-refreshing (not build-time-frozen) fetch. See
 [`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) for the
 complete write-up.
 
+**Module 3D (Branding & UI Identity): approved and frozen.**
+Presentation-only — no backend logic, schema, API, or business rule
+changed (confirmed by running the full 238-test backend suite unmodified
+after every edit, plus a file-modification-time audit). The official
+OASIS brand palette (Deep Navy, Bright Blue, Fresh Green) and typography
+(Poppins/Inter, self-hosted) now drive every color and font in the app;
+the actual logo image — mechanically extracted from the uploaded
+Branding Package via precise pixel-boundary detection, not redrawn or
+recolored — appears in the Navbar, Footer, Home page, all three auth
+pages, the browser favicon, and the PWA manifest icons. Went through a
+pre-freeze verification pass (no placeholder branding anywhere, every
+metadata/email/auth-page touchpoint confirmed live, Platform Settings
+override-with-fallback confirmed at every usage site, zero backend
+changes confirmed) — all four items already correct, no corrections
+needed. A permanent **Master Branding Package** now lives at
+[`Branding/`](Branding/) — the single source of truth for OASIS branding
+across every future product (web, mobile, brochures, certificates,
+social, banners), with full per-asset provenance disclosed in
+[`Branding/Brand-Guidelines/Logo-Usage.md`](Branding/Brand-Guidelines/Logo-Usage.md).
+See [`docs/11-module-3d-notes.md`](docs/11-module-3d-notes.md) for the
+complete write-up.
+
 See also [`CHANGELOG.md`](CHANGELOG.md) for a chronological record and
 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) for the living, single-source-of-truth
 architectural summary every future module should be checked against.
@@ -107,6 +130,7 @@ architectural summary every future module should be checked against.
 | [`docs/08-module-3a-notes.md`](docs/08-module-3a-notes.md) | Module 3A design decisions and what was actually built/tested |
 | [`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) | Module 3B design decisions and what was actually built/tested |
 | [`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) | Module 3C design decisions and what was actually built/tested |
+| [`docs/11-module-3d-notes.md`](docs/11-module-3d-notes.md) | Module 3D branding decisions and what was actually changed |
 
 ## Tech stack (locked for V1)
 
@@ -274,10 +298,11 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Modules 1, 2, 3A, 3B, and 3C are frozen and are the project's permanent
-architecture — every module since builds on the `AuthRepository` pattern,
-the middleware pipeline, the error envelope, the env-validation approach,
-`optionalAuthenticate`, the two-tier signed-URL TTL convention, the
-ownership-assertion-before-every-write pattern, numeric move-up/down
-reordering, and the public-`GET /settings`-for-dynamic-branding pattern
-established there, rather than redesigning them.
+Modules 1, 2, 3A, 3B, 3C, and 3D are frozen and are the project's
+permanent architecture — every module since builds on the
+`AuthRepository` pattern, the middleware pipeline, the error envelope,
+the env-validation approach, `optionalAuthenticate`, the two-tier
+signed-URL TTL convention, the ownership-assertion-before-every-write
+pattern, numeric move-up/down reordering, the public-`GET /settings`-for-
+dynamic-branding pattern, and the permanent `Branding/` Master Branding
+Package established there, rather than redesigning them.

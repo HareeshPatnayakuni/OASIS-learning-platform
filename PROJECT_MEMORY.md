@@ -6,7 +6,7 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: end of Module 3C.
+Updated after every approved module. Last updated: end of Module 3D.
 
 ---
 
@@ -25,6 +25,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 3A — Student Learning Experience | ✅ Frozen |
 | 3B — Teacher Dashboard & Course Management | ✅ Frozen |
 | 3C — Admin Dashboard & Platform Management | ✅ Frozen |
+| 3D — Branding & UI Identity | ✅ Frozen |
 
 Frozen means: don't redesign it. Extend it additively, the way Module 2
 added `VerificationToken` to the schema without touching any Module 1
@@ -364,6 +365,12 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   dashboards. This was also the one place Module 3C touched a Module 3A
   frozen file (`app/layout.tsx`) — a single self-contained
   import-and-render addition, not a change to anything existing in it.
+- **`Footer` component** (Module 3D, `src/components/Footer.tsx`):
+  mounted once in the root layout below `{children}`, same
+  mount-once-at-root pattern as `PlatformAnnouncementsBanner` and the
+  Navbar. Shows academy name/tagline/contact/social links from
+  `GET /settings`, with the logo image and the same fallback pattern
+  described above.
 - **Academy branding (name/full name/tagline/logo/favicon) always comes
   from `GET /settings` (public), never a hardcoded literal** (Module 3C,
   fixed during pre-freeze verification — see
@@ -383,11 +390,20 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   for data that changes occasionally and shouldn't be frozen at build
   time by Next's default fetch caching. Without it, a static page that
   fetches once at build time never sees updates until the next deploy.
-- **Design tokens** (Module 3A): brand indigo + accent amber, defined once
-  in `src/app/globals.css`'s `@theme inline` block (`--color-brand-*`,
-  `--color-accent-*`, `--color-success-*`) and used via Tailwind utilities
-  (`bg-brand-600`, `text-accent-600`, etc.) — don't pick a new ad hoc color
-  for a new component; extend the token set if a real new need arises.
+- **Design tokens**: the same `--color-brand-*`/`--color-accent-*`/
+  `--color-success-*` token scheme established in Module 3A, but the
+  actual colors were replaced in Module 3D with the official OASIS brand
+  palette (Deep Navy `#0B1D3A`, Bright Blue `#1E5BFF`, Fresh Green
+  `#22C55E`) — `brand-600`/`brand-900`/`accent-500` are these exact hex
+  values, unmodified; every other shade in the ramp is a mathematically
+  derived tint/shade of them, not invented separately. Defined once in
+  `src/app/globals.css`'s `@theme inline` block, used via Tailwind
+  utilities (`bg-brand-600`, `text-accent-600`, etc.) — don't pick a new
+  ad hoc color for a new component; extend the token set (deriving from
+  the same 3 official colors) if a real new need arises. Never hardcode
+  a hex value or reach for a stock Tailwind color (`blue-600`,
+  `green-500`, etc.) directly — Module 3D found and fixed exactly one
+  place this had happened.
 - **Reusable component library**, `src/components/`: `ui/` (Button, Badge,
   ProgressBar, Loading/States — generic, no domain knowledge), `course/`
   (CourseCard, CourseFilterBar, CourseSyllabus, VideoPlayer — course-domain,
@@ -396,8 +412,41 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 - No business logic in the frontend — enforcement, entitlement, and
   computed business values (e.g. course-unlock status) come from the API
   response, never re-derived client-side.
-- System font stack (no `next/font/google`) — avoids an external font-CDN
-  dependency; see `src/app/layout.tsx`.
+- **Typography**: official brand fonts (Poppins for headings, Inter for
+  body — Module 3D), self-hosted via `@fontsource/poppins`/
+  `@fontsource/inter` (real WOFF2 files as npm package assets), imported
+  in `globals.css`, applied globally to `h1`–`h6` via `--font-heading`
+  and to `body` via `--font-sans`. This replaced Module 3A's original
+  system-font-stack choice — `next/font/google` was tried again at that
+  point and still hard-fails in this sandbox (no network path to
+  `fonts.googleapis.com`), so `@fontsource` was used instead specifically
+  *because* it satisfies the same original reasoning (avoid a third-party
+  origin serving content to end users) while also being genuinely
+  self-hosted rather than build-time-cached from one. If a future page
+  needs a font, use the existing `--font-sans`/`--font-heading` tokens —
+  don't add a third typeface without updating the Branding Package
+  source of truth first.
+- **Logo assets**: real, extracted PNG files under
+  `frontend/public/brand/` (Module 3D) — see
+  `docs/11-module-3d-notes.md §8` for the full inventory and which crop
+  is used where. Every placement follows the same fallback pattern:
+  `settings?.logoUrl ?? '/brand/oasis-logo-....png'` — an Admin-uploaded
+  logo (Module 3B/3C's existing Platform Settings upload flow) takes
+  priority automatically; the static files are what a fresh,
+  unconfigured install shows. Use this exact pattern for any new page
+  that needs to show the logo, rather than hardcoding just the static
+  path (which would ignore a configured custom logo) or just the dynamic
+  one (which would show nothing on a fresh install).
+- **`Branding/` at the repository root is the permanent Master Branding
+  Package** (Module 3D) — the single source of truth for brand identity,
+  colors, typography, and logo usage rules across *every* future OASIS
+  product (web, mobile, brochures, certificates, social, banners), not
+  just this codebase. `frontend/public/brand/`'s files are a subset of
+  what's in `Branding/Logos/`, copied there specifically for the web app
+  to serve them. If the two ever disagree, `Branding/` is authoritative —
+  check `Branding/Brand-Guidelines/Logo-Usage.md §7` for every asset's
+  exact provenance (direct crop vs. resize vs. disclosed composition)
+  before adding a new one anywhere.
 - `output: "standalone"` in `next.config.ts` is gated behind a
   `DOCKER_BUILD` env var (Module 3A fix) — it's incompatible with plain
   `next start`, which is what a developer runs locally. Only

@@ -17,7 +17,7 @@ import { apiRequest } from '@/lib/api-client';
 import type { PlatformSettings } from '@/types/api';
 
 const FALLBACK_ACADEMY_NAME = 'OASIS';
-const FALLBACK_TAGLINE = 'Learn From Home. Excel Everywhere.';
+const FALLBACK_TAGLINE = 'Learn from Home. Excel Everywhere.';
 
 export default async function HomePage() {
   let settings: PlatformSettings | null = null;
@@ -32,10 +32,12 @@ export default async function HomePage() {
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-24 text-center">
-      <p className="text-sm font-medium tracking-wide text-blue-600 uppercase">{tagline}</p>
-      <h1 className="text-4xl font-bold tracking-tight text-neutral-900 sm:text-5xl dark:text-neutral-50">
-        {academyName}
-      </h1>
+      {/* eslint-disable-next-line @next/next/no-img-element -- remote/static logo URL, domain not known at build time */}
+      <img
+        src={settings?.logoUrl ?? '/brand/oasis-logo-full-light.png'}
+        alt={`${academyName} — ${tagline}`}
+        className="h-auto w-full max-w-md"
+      />
       <p className="max-w-xl text-neutral-600 dark:text-neutral-400">
         {settings?.academyFullName ?? 'Online Academy for Smart Integrated Studies'}. This landing page is a
         Module 2 placeholder — the real Home page design (Hero, Why {academyName},

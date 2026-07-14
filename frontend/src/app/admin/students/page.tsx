@@ -91,7 +91,7 @@ export default function AdminStudentsPage() {
       </form>
 
       {actionMessage ? (
-        <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-success-600">{actionMessage}</p>
+        <p className="mb-4 rounded-lg bg-success-50 px-3 py-2 text-sm text-success-600">{actionMessage}</p>
       ) : null}
 
       {!students ? (

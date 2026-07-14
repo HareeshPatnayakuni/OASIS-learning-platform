@@ -194,7 +194,7 @@ export default function AdminSettingsPage() {
           </p>
         ) : null}
         {saveMessage ? (
-          <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-success-600">
+          <p role="status" className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-600">
             {saveMessage}
           </p>
         ) : null}
