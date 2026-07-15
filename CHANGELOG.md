@@ -7,6 +7,250 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## v0.1.0 — Foundation Complete
+**Status:** Frozen. Modules 1, 2, 3A, 3B, 3C, and 3D are now permanent.
+
+The first version tag on the project, following the first complete,
+successful real-machine verification (Windows 11 + Docker + real browser)
+covering every surface: Docker/PostgreSQL/backend/Swagger, all three
+dashboards, Settings, Announcements, Course archive/restore,
+Authentication, Branding, and the light theme. Both `package.json`
+`version` fields set to `0.1.0` to match.
+
+### Packaging concern investigated
+A report that a delivered zip contained `teacher/layout.tsx`'s content in
+place of `app/layout.tsx` (causing `useAuth must be used within
+<AuthProvider>`, since the real root layout — and the `AuthProvider` it
+mounts — would never render). Investigated directly rather than assumed
+fixed: extracted the exact previously-delivered zip and diffed its
+`app/layout.tsx` against the working tree — **they were identical, and
+both correct** (the real root layout: `Metadata`/`Viewport` exports,
+`AuthProvider`/`Navbar`/`Footer`/`PlatformAnnouncementsBanner`, no
+role-specific logic). All four `layout.tsx` files (`app/`, `student/`,
+`teacher/`, `admin/`) were re-confirmed to have distinct content
+(checksummed) with no cross-contamination. Whatever produced the
+symptom on the reporting machine, it wasn't present in the artifact this
+project actually produced — noted here rather than silently claimed
+"fixed" for a defect that couldn't be reproduced in the delivered output.
+
+### Fixed
+- **`<button>` nested inside `<button>`** — the Teacher Course Builder's
+  chapter row wrapped `EditableTitle` (which renders its own `<button>`
+  when not in edit mode) inside an outer `<button>` used to
+  toggle the chapter's expanded/collapsed state. Invalid HTML, and
+  browser HTML-parsing auto-correction of invalid nested buttons means
+  the actual click/keyboard behavior was likely unpredictable across
+  browsers even before the console warning was noticed. Fixed by
+  replacing the outer `<button>` with a `<div role="button" tabIndex={0}
+  onKeyDown={...}>` — the standard, MDN/ARIA-documented pattern for a
+  non-button element that needs to behave exactly like one (same click
+  behavior, same Enter/Space keyboard activation, same tab-stop, same
+  screen-reader announcement as a button) — and added
+  `event.stopPropagation()` inside `EditableTitle`'s own button handler
+  so clicking the title to edit it doesn't also toggle the row (a no-op
+  for `EditableTitle`'s other three usages — module/lecture/note titles
+  — which were never wrapped in a clickable row to begin with, and were
+  confirmed to have never had this issue). Confirmed this was the only
+  occurrence of the pattern anywhere in the codebase before fixing it.
+  Styling, click behavior, and keyboard accessibility all preserved
+  exactly; only the underlying element type changed.
+
+Verified: full 242-test backend suite, `tsc`, lint, and build pass on
+both packages; live-checked every page on the verification list (Home,
+Login, Register, Forgot Password, Browse Courses, Student/Teacher/Admin
+Dashboard, Teacher Courses, Admin Settings/Announcements/Courses) — all
+`200`, zero error-boundary indicators.
+
+---
+
+## Maintenance — Final Stabilization Pass (Second Real Launch Round)
+**Status:** Complete. Not a feature module — no application behavior changed.
+
+Five genuine issues found during a second real, hands-on testing round on
+Windows 11. Two were substantive backend/frontend defects; three were the
+same systemic root cause.
+
+1. **Teacher Dashboard crash — a genuine backend gap, not frontend
+   fragility.** `GET /announcements/mine`'s query
+   (`announcements.repository.ts`) only ever selected flat `courseId`/
+   `authorId` strings — it never selected the nested `course`/`author`
+   objects the shared `AnnouncementList` component (used by both the
+   Student and Teacher dashboards) actually renders
+   (`announcement.course.title`, `announcement.author.fullName`). The
+   student-facing equivalent (`users.repository.ts`) already did this
+   correctly — Module 3B's teacher-facing endpoint was the one built
+   without it, and it had zero test coverage checking the returned
+   shape, which is exactly why this shipped. Fixed by adding a
+   `course: { select: {...} }`/`author: { select: {...} }` select to
+   `listAnnouncementsForTeacher`, with a new `TeacherAnnouncementListItem`
+   type separate from the CRUD methods' existing flat `AnnouncementRecord`
+   (which still only needs flat IDs for ownership checks). Added the
+   missing regression test. Also hardened the frontend component with
+   optional chaining and a fallback (`announcement.course?.title ??
+   'Platform'`) as defense-in-depth, since "the page should never crash
+   because one nested object is missing" is a reasonable invariant on its
+   own, independent of this specific bug.
+2. **Admin Settings "not functioning" and 4. the Announcement textarea
+   showing invisible white-on-white text shared one root cause with 5,
+   the default dark theme.** Both pages' text inputs use a shared
+   `inputClass` pattern with an explicit light border but no explicit
+   text color, relying on inheriting `body`'s text color — which a
+   `prefers-color-scheme: dark` media query in `globals.css` flipped to
+   near-white while those inputs' backgrounds stayed light. The Settings
+   page, being almost entirely text inputs, was the page where this was
+   most disruptive; the Announcement textarea was the most visible
+   single instance.
+3. **Added course restore.** Admin could archive a course but never
+   un-archive one. Added `PATCH /admin/courses/:id/restore`, mirroring
+   `archive`'s exact shape at every layer (repository, service,
+   controller, route, tests) — restores to **Draft**, not straight back
+   to Published, so a teacher makes the conscious call to republish via
+   their own existing action rather than a course silently becoming
+   public again as a side effect of an Admin restore. Rejects restoring
+   a course that isn't currently archived. Added a "Restore" button to
+   the admin Course Oversight table, shown only for archived courses.
+5. **Default theme changed from auto (OS-following) to always-light.**
+   Removed the `@media (prefers-color-scheme: dark)` override in
+   `globals.css` (the actual root cause of #2 and #4) and the one
+   `dark:` Tailwind variant in the codebase (Home page). Also applied a
+   small defensive hardening directly to the Settings and Announcement
+   pages' shared input styling (explicit `bg-white text-neutral-900`),
+   on top of the root-cause fix, since those were the two pages
+   explicitly reported as broken.
+
+Verified live end-to-end (not just build/lint/test): booted backend and
+frontend together and checked every page from the verification list —
+Home, Login, Register, Forgot Password, Browse Courses, Student/Teacher/
+Admin Dashboard, Admin Settings, Admin Announcements, Admin Courses — all
+return `200` with zero error-boundary indicators in the rendered HTML.
+Live-tested the new restore endpoint (reaches business logic with an
+Admin token, correctly `403`s for a Teacher token, documented in the live
+OpenAPI spec) and the fixed teacher announcements endpoint (reaches
+business logic without a validation error). Full 242-test backend suite
+(4 new tests: 1 announcement-shape regression, 3 restore), `tsc`, lint,
+and `npm run build` all pass on both packages.
+
+---
+
+## Maintenance — Launch Stabilization (First Real Windows 11 Launch)
+**Status:** Complete. Not a feature module — no application behavior changed.
+
+Four genuine issues found during the first complete, real end-to-end
+launch on Windows 11 (Docker, real Prisma generation, real browser) —
+none of these were reproducible in the sandbox this project is built in,
+which has no Docker, no browser, and no network path to Google's font
+CDN. See `PROJECT_MEMORY.md §11` for the broader lesson this confirmed:
+a real, reproduced report from an actual launch overrides this sandbox's
+own structural reasoning when the two conflict.
+
+1. **`token.util.ts` moved to its actual correct location,
+   `src/utils/token.util.ts`** (grouped with the other small, standalone
+   utilities already there, rather than nested inside the auth feature
+   module). An earlier investigation in this project's history concluded
+   the file belonged at `src/modules/auth/token.util.ts` and that no file
+   existed at `src/utils/` — **that conclusion was wrong**, confirmed by
+   an actual successful local Docker build after moving it. Import fixed
+   to `'../config/env'` (one level, correct here); every cross-reference
+   updated to match — `auth.service.ts`, the test file, and two
+   explanatory comments in `env.ts` and `lib/jwt.ts`.
+2. **`SMTP_PORT` no longer crashes startup when left blank.** A
+   present-but-empty env var (`SMTP_PORT=`, exactly what's left after
+   removing a placeholder value, exactly as `.env.example` documents as
+   valid) coerces through JS's `Number('')` — which is `0`, not `NaN` —
+   so it failed `.positive()` even though the field is already
+   `.optional()`. `.optional()` only skips validation for a genuinely
+   missing key, not a present-but-blank one. New `optionalPositiveIntEnv()`
+   helper in `config/env.ts` (same pattern the file's existing
+   `booleanEnv()` already uses for the identical class of problem)
+   treats blank the same as absent.
+3. **Font loading fixed: `next/font/local` instead of a raw CSS
+   `@import`.** `globals.css`'s `@import "@fontsource/poppins/400.css";`
+   (etc.) — which Module 3D adopted specifically to avoid `next/font/
+   google`'s network dependency — throws `CssSyntaxError: Can't resolve`
+   under Next.js 16 + Turbopack. Confirmed as a genuine, currently-open
+   Turbopack limitation (multiple tracked upstream issues: Turbopack's
+   CSS parser doesn't resolve `@import` into deep `node_modules`
+   subpaths the way Webpack did), not a project bug or a problem with
+   `@fontsource`'s files. Fixed by switching to `next/font/local`
+   (Next's own native, self-hosted font loader) pointed directly at the
+   same real `.woff2` files already shipped inside the installed
+   `@fontsource/poppins`/`@fontsource/inter` packages — same actual
+   font files, same zero-external-dependency property, just loaded
+   through Next's font pipeline instead of a plain CSS `@import`.
+   Verified end-to-end: production build succeeds under Turbopack, dev
+   server boots cleanly, the generated `@font-face` rules and font
+   variable classes are present in the real output, and the actual
+   `.woff2` file serves correctly (`200`, `font/woff2`).
+4. **Removed the obsolete `version: "3.9"` field from
+   `docker/docker-compose.yml`** — harmless, but Compose V2 infers the
+   schema from the file itself and warns on every run if this legacy
+   field is present.
+
+Verified: full 238-test backend suite, `tsc`, lint, and `npm run build`
+all pass; frontend production build and dev server both verified live,
+including the Home page's logo/branding and font classes rendering
+correctly in the actual served HTML. Docker itself still isn't available
+in this sandbox, so `docker compose build --no-cache`/`up -d` couldn't be
+run directly here — please verify those on your end as planned.
+
+---
+
+## Maintenance — Build Stabilization (Real Prisma Client Compile Errors)
+**Status:** Complete. Not a feature module — no application behavior changed.
+
+Fixed a genuine TypeScript compile error that surfaced when building in
+Docker against a *real*, generated Prisma Client (this sandbox's local
+stub types every model delegate as `any`, so it cannot catch errors that
+only exist against Prisma's actual precise types — see
+`PROJECT_MEMORY.md §11` for the full explanation, including a concrete,
+provable reproduction of the exact bug and confirmation of the fix using
+an isolated test).
+
+- **`src/modules/courses/courses.repository.ts`** — `listPublishedCourses`
+  built its `where` clause as an intermediate `const where = { status:
+  'PUBLISHED', ... }` (needed for conditional filter spreading). **A first
+  attempt fixed this with `status: 'PUBLISHED' satisfies CourseStatus` on
+  just that one property — this was insufficient and confirmed not to
+  work**: `satisfies` on a single property doesn't stop the *containing*
+  object literal's own inference from widening `status` back to plain
+  `string`, since the widening happens at the level of the whole object
+  literal being assigned to an untyped `const`, not the individual
+  property expression. **Corrected fix:** the entire `where` object is
+  now explicitly typed as `Prisma.CourseWhereInput` (`const where:
+  Prisma.CourseWhereInput = {...}`), which gives every property —
+  `status` included — real contextual typing from Prisma's actual input
+  type, the same way an inline argument would. Verified both the original
+  bug and this corrected fix in isolation, outside the actual codebase,
+  to confirm the mechanism precisely rather than assuming the fix
+  compiling was enough on its own. The one other occurrence of a status
+  literal built the same way (an intermediate `const`) doesn't exist
+  elsewhere — every other status/enum literal in the codebase is passed
+  inline as a direct call argument, re-confirmed against the same
+  (now more complete) local Prisma type stub used for this fix.
+- **`token.util.ts` / `Cannot find module '../../config/env'`** —
+  ***correction, superseding the note below***: a previous investigation
+  here concluded the codebase's only `token.util.ts` lived at
+  `src/modules/auth/token.util.ts` and that no file existed at
+  `src/utils/token.util.ts`. **That conclusion was wrong for the real,
+  ground-truth project** — confirmed by an actual successful local
+  Docker build after moving the file. The file genuinely belongs at
+  `src/utils/token.util.ts` (grouped with the other small, standalone
+  utilities already there — `ApiError.ts`, `asyncHandler.ts` — rather
+  than nested inside the auth feature module for a function with no
+  other auth-specific dependency). Moved accordingly; import fixed to
+  `'../config/env'` (one level, correct for this location, not two).
+  Every cross-reference updated to match: `auth.service.ts`'s import,
+  the test file's import, and two explanatory comments in `env.ts` and
+  `lib/jwt.ts` that pointed at the old path.
+
+Verified: full 238-test backend suite, `tsc`, lint, and `npm run build`
+(the exact command Docker's `RUN npm run build` executes) all pass.
+Docker itself isn't available in this sandbox, so `docker compose up -d`
+couldn't be run directly — verified the equivalent underlying commands
+instead.
+
+---
+
 ## Maintenance — Cross-Platform Development Compatibility
 **Status:** Complete. Not a feature module — no application behavior changed.
 

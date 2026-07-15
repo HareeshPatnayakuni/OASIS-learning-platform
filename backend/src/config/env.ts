@@ -30,6 +30,24 @@ function booleanEnv(defaultValue: boolean) {
     });
 }
 
+/**
+ * Same footgun as `booleanEnv`, different shape: `z.coerce.number()` on an
+ * *empty string* (not a missing key) coerces via JS's `Number('')`, which
+ * is `0`, not `NaN` — so a genuinely-optional numeric var left as
+ * `SMTP_PORT=` (present, blank — exactly what a template `.env.example`
+ * produces once a user removes a placeholder value) fails `.positive()`
+ * with a confusing "must be greater than 0", even though `.optional()`
+ * is already on the schema. `.optional()` only skips validation for
+ * `undefined` (the key entirely absent), not for a present-but-blank
+ * value — this treats blank the same as absent, for optional numeric vars.
+ */
+function optionalPositiveIntEnv() {
+  return z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.coerce.number().int().positive().optional(),
+  );
+}
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -38,7 +56,7 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
   // Provisioned as a genuinely separate secret from JWT_ACCESS_SECRET (not
-  // just a differently-named copy) — see src/modules/auth/token.util.ts for
+  // just a differently-named copy) — see src/utils/token.util.ts for
   // how it's actually used: refresh/verification tokens are opaque random
   // strings, not JWTs, so this isn't used to *sign* anything; it's used as
   // an HMAC pepper when hashing those tokens for storage, which is what
@@ -90,7 +108,7 @@ const envSchema = z.object({
   // fallback used when these aren't set (Module 2 default; a real provider
   // is wired in once credentials exist).
   SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_PORT: optionalPositiveIntEnv(),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   EMAIL_FROM: z.string().default('OASIS <no-reply@oasis.example.com>'),

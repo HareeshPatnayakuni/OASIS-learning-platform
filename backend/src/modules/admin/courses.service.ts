@@ -8,10 +8,11 @@ export interface CourseListResult {
 }
 
 /**
- * Deliberately narrow: list, archive, delete. No chapter/module/lecture/
- * quiz/note editing — that stays exclusively under Teacher ownership
- * (Module 3B). This service structurally cannot touch content because it
- * has no dependency on content-management's repository at all.
+ * Deliberately narrow: list, archive, restore, delete. No chapter/
+ * module/lecture/quiz/note editing — that stays exclusively under
+ * Teacher ownership (Module 3B). This service structurally cannot touch
+ * content because it has no dependency on content-management's
+ * repository at all.
  */
 export class AdminCourseService {
   constructor(private readonly repo: AdminRepository) {}
@@ -28,6 +29,14 @@ export class AdminCourseService {
   async archiveCourse(id: string): Promise<AdminCourseRecord> {
     await this.assertCourseExists(id);
     return this.repo.archiveCourse(id);
+  }
+
+  async restoreCourse(id: string): Promise<AdminCourseRecord> {
+    const course = await this.assertCourseExists(id);
+    if (course.status !== 'ARCHIVED') {
+      throw ApiError.badRequest('COURSE_NOT_ARCHIVED', 'Only an archived course can be restored');
+    }
+    return this.repo.restoreCourse(id);
   }
 
   async deleteCourse(id: string): Promise<void> {

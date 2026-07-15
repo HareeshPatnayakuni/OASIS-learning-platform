@@ -1,11 +1,4 @@
 @import "tailwindcss";
-@import "@fontsource/poppins/400.css";
-@import "@fontsource/poppins/500.css";
-@import "@fontsource/poppins/600.css";
-@import "@fontsource/poppins/700.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
 
 :root {
   --background: #ffffff;
@@ -87,37 +80,36 @@
   --color-teal-500: var(--color-teal-500);
 
   /* Official typography (Branding Package): Poppins for headings, Inter
-     for body text — self-hosted via @fontsource (real WOFF2 files
-     installed as npm packages, imported above), not next/font/google.
-     next/font/google was tried first and hard-fails in this sandbox
-     (403 fetching fonts.googleapis.com at build time — no network
-     access to Google's font CDN here); @fontsource sidesteps this
-     entirely since the actual font files are npm package assets
-     resolved from the registry, not fetched from Google at build or
-     runtime. This is also a strictly better fit for the reasoning that
-     originally kept this project on system fonts (avoiding a
-     third-party origin serving content to end users) — @fontsource is
-     genuinely self-hosted, not merely build-time-cached. See
-     docs/11-module-3d-notes.md. System-font fallbacks are kept at the
-     end of each stack so a build without these packages installed
-     still renders reasonably. */
+     for body text — self-hosted via next/font/local (see layout.tsx),
+     pointed at the same real WOFF2 files @fontsource/poppins and
+     @fontsource/inter ship as npm package assets. `--font-poppins`/
+     `--font-inter` are set on <html> in layout.tsx via each font's
+     `.variable`; referenced here rather than a literal family name so
+     Tailwind's font-sans/font-heading utilities keep working exactly as
+     before. System-font fallbacks are kept at the end of each stack so
+     the page still renders reasonably if the variable is ever missing
+     for any reason (e.g. a page rendered outside the root layout). */
   --font-sans:
-    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-heading:
-    "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
+    var(--font-poppins), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
     monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Default theme is light, always — deliberately not responding to
+   prefers-color-scheme. A previous dark-mode override here
+   (--background: #0a0a0a; --foreground: #ededed) was the actual root
+   cause of a real, reported bug: many form inputs across the app rely on
+   inherited text color from `body` rather than setting their own,
+   while their backgrounds stay explicitly light — under a dark-mode
+   preference, body's text flipped to near-white while those input
+   backgrounds stayed light, making typed text invisible (worst example:
+   the Platform Announcement textarea). Confirmed light-everywhere fixes
+   this at the root rather than patching every individual input. */
 
 body {
   background: var(--background);

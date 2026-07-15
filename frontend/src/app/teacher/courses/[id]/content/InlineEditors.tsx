@@ -61,7 +61,8 @@ export function EditableTitle({
     return (
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           setValue(title);
           setIsEditing(true);
         }}

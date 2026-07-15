@@ -73,6 +73,16 @@ export default function AdminCoursesPage() {
     }
   }
 
+  async function handleRestore(course: AdminCourseRecord): Promise<void> {
+    if (!confirm(`Restore "${course.title}" to Draft? The teacher can publish it again once ready.`)) return;
+    try {
+      await authFetch(`/admin/courses/${course.id}/restore`, { method: 'PATCH' });
+      await refetch();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : 'Could not restore course.');
+    }
+  }
+
   async function handleDelete(course: AdminCourseRecord): Promise<void> {
     if (
       !confirm(
@@ -156,7 +166,14 @@ export default function AdminCoursesPage() {
                         >
                           Archive
                         </button>
-                      ) : null}
+                      ) : (
+                        <button
+                          onClick={() => void handleRestore(course)}
+                          className="text-xs text-brand-600 hover:underline"
+                        >
+                          Restore
+                        </button>
+                      )}
                       <button
                         onClick={() => void handleDelete(course)}
                         className="text-xs text-red-500 hover:underline"

@@ -160,8 +160,8 @@ export interface AnnouncementItem {
   title: string;
   body: string;
   createdAt: string;
-  course: { id: string; title: string; slug: string };
-  author: { id: string; fullName: string };
+  course?: { id: string; title: string; slug: string };
+  author?: { id: string; fullName: string };
 }
 
 // ── Search ───────────────────────────────────────────────────────────

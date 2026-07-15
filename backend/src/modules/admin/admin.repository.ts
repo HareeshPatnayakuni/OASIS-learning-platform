@@ -400,6 +400,15 @@ export class PrismaAdminRepository implements AdminRepository {
     return (await this.findCourseById(id))!;
   }
 
+  async restoreCourse(id: string): Promise<AdminCourseRecord> {
+    // Restores to DRAFT, not straight back to PUBLISHED — an archived
+    // course becoming publicly visible again should be a conscious
+    // decision the teacher makes via their own existing Publish action
+    // (Module 3B), not an automatic side effect of an Admin restore.
+    await prisma.course.update({ where: { id }, data: { status: 'DRAFT' } });
+    return (await this.findCourseById(id))!;
+  }
+
   async softDeleteCourse(id: string): Promise<void> {
     await prisma.course.update({ where: { id }, data: { deletedAt: new Date() } });
   }

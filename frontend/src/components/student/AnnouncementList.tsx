@@ -25,7 +25,7 @@ export function AnnouncementList({ announcements }: { announcements: Announcemen
           </div>
           <p className="text-sm text-neutral-600">{announcement.body}</p>
           <p className="mt-2 text-xs text-neutral-400">
-            {announcement.course.title} · {announcement.author.fullName}
+            {announcement.course?.title ?? 'Platform'} · {announcement.author?.fullName ?? 'OASIS Team'}
           </p>
         </li>
       ))}

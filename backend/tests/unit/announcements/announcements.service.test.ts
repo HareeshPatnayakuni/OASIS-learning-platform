@@ -16,10 +16,24 @@ const mockedIsCourseOwnedByTeacher = ownershipLib.isCourseOwnedByTeacher as jest
   typeof ownershipLib.isCourseOwnedByTeacher
 >;
 
-function createFakeAnnouncementRepository(options: { enrolledStudentIds?: string[] } = {}) {
+function createFakeAnnouncementRepository(
+  options: {
+    enrolledStudentIds?: string[];
+    courses?: Array<{ id: string; title: string; slug: string }>;
+    authors?: Array<{ id: string; fullName: string }>;
+  } = {},
+) {
   const announcements = new Map<string, AnnouncementRecord>();
   const notificationsCreated: Array<{ studentIds: string[]; announcementId: string }> = [];
   const enrolledStudentIds = options.enrolledStudentIds ?? [];
+  const courseDirectory = new Map(
+    (options.courses ?? [{ id: 'course-1', title: 'CBSE Class 8 Mathematics', slug: 'cbse-class-8-mathematics' }]).map(
+      (c) => [c.id, c],
+    ),
+  );
+  const authorDirectory = new Map(
+    (options.authors ?? [{ id: 'teacher-1', fullName: 'Priya Sharma' }]).map((a) => [a.id, a]),
+  );
 
   const repo: TeacherAnnouncementRepository = {
     async createAnnouncement(courseId: string, authorId: string, input: CreateAnnouncementInput) {
@@ -54,7 +68,15 @@ function createFakeAnnouncementRepository(options: { enrolledStudentIds?: string
     },
     async listAnnouncementsForTeacher(teacherId: string, page: number, limit: number) {
       const mine = [...announcements.values()].filter((a) => a.authorId === teacherId);
-      return { data: mine.slice((page - 1) * limit, page * limit), total: mine.length };
+      const data = mine.slice((page - 1) * limit, page * limit).map((a) => ({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        createdAt: a.createdAt,
+        course: courseDirectory.get(a.courseId) ?? { id: a.courseId, title: 'Unknown course', slug: 'unknown' },
+        author: authorDirectory.get(a.authorId) ?? { id: a.authorId, fullName: 'Unknown teacher' },
+      }));
+      return { data, total: mine.length };
     },
   };
 
@@ -157,5 +179,29 @@ describe('TeacherAnnouncementService.listMyAnnouncements', () => {
     const result = await service.listMyAnnouncements(TEACHER_ID);
     expect(result.data).toHaveLength(1);
     expect(result.data[0]?.title).toBe('Mine');
+  });
+
+  it('includes the nested course and author objects the frontend renders (not just their IDs)', async () => {
+    // Regression test: a previous version of this endpoint returned only
+    // flat courseId/authorId strings, which crashed the Teacher Dashboard
+    // — the shared AnnouncementList component (also used by the Student
+    // Dashboard) reads announcement.course.title and
+    // announcement.author.fullName directly.
+    mockedIsCourseOwnedByTeacher.mockResolvedValue(true);
+    const { repo } = createFakeAnnouncementRepository({
+      courses: [{ id: COURSE_ID, title: 'CBSE Class 8 Mathematics', slug: 'cbse-class-8-mathematics' }],
+      authors: [{ id: TEACHER_ID, fullName: 'Priya Sharma' }],
+    });
+    const service = new TeacherAnnouncementService(repo);
+    await service.createAnnouncement(COURSE_ID, TEACHER_ID, { title: 'Reminder', body: 'Exam next week' });
+
+    const result = await service.listMyAnnouncements(TEACHER_ID);
+
+    expect(result.data[0]?.course).toEqual({
+      id: COURSE_ID,
+      title: 'CBSE Class 8 Mathematics',
+      slug: 'cbse-class-8-mathematics',
+    });
+    expect(result.data[0]?.author).toEqual({ id: TEACHER_ID, fullName: 'Priya Sharma' });
   });
 });

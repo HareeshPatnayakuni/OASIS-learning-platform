@@ -10,7 +10,7 @@ import { uploadFileToSignedUrl } from '@/lib/upload';
 import type { CreateMediaResult, PlatformSettings } from '@/types/api';
 
 const inputClass =
-  'w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
+  'w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
 export default function AdminSettingsPage() {
   const { authFetch } = useAuth();

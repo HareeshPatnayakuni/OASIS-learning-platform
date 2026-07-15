@@ -1,6 +1,6 @@
 {
   "name": "@oasis/backend",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "description": "OASIS backend API — Express + TypeScript + Prisma",
   "main": "dist/server.js",

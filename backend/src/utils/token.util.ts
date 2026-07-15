@@ -1,5 +1,5 @@
 import { randomBytes, createHmac } from 'node:crypto';
-import { env } from '../../config/env';
+import { env } from '../config/env';
 
 /**
  * Shared by refresh tokens (RefreshToken.token) and email-verification /

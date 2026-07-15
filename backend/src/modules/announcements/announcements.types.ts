@@ -19,6 +19,27 @@ export interface AnnouncementRecord {
   createdAt: Date;
 }
 
+/**
+ * Display shape for the teacher's own announcement list — the CRUD
+ * methods above only ever need the flat `courseId`/`authorId` (for
+ * ownership checks and ordinary reads/writes), but the list endpoint
+ * feeds a frontend component (`AnnouncementList`, shared with the
+ * student dashboard) that needs the same nested `course`/`author` shape
+ * the student-facing endpoint already returns
+ * (`users.repository.ts`'s `listAnnouncementsForStudent`). A previous
+ * version of this endpoint returned only flat IDs here, which the
+ * frontend's `AnnouncementItem` type never actually matched — a real
+ * crash on the Teacher Dashboard, not a frontend defensive-coding gap.
+ */
+export interface TeacherAnnouncementListItem {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: Date;
+  course: { id: string; title: string; slug: string };
+  author: { id: string; fullName: string };
+}
+
 export interface CreateAnnouncementInput {
   title: string;
   body: string;
@@ -49,5 +70,5 @@ export interface TeacherAnnouncementRepository {
     teacherId: string,
     page: number,
     limit: number,
-  ): Promise<{ data: AnnouncementRecord[]; total: number }>;
+  ): Promise<{ data: TeacherAnnouncementListItem[]; total: number }>;
 }

@@ -3,6 +3,7 @@ import { isCourseOwnedByTeacher } from '../../lib/ownership';
 import type {
   AnnouncementRecord,
   CreateAnnouncementInput,
+  TeacherAnnouncementListItem,
   TeacherAnnouncementRepository,
   UpdateAnnouncementInput,
 } from './announcements.types';
@@ -61,7 +62,7 @@ export class TeacherAnnouncementService {
     teacherId: string,
     page = 1,
     limit: number = DEFAULT_LIMIT,
-  ): Promise<{ data: AnnouncementRecord[]; meta: { page: number; limit: number; total: number } }> {
+  ): Promise<{ data: TeacherAnnouncementListItem[]; meta: { page: number; limit: number; total: number } }> {
     const { data, total } = await this.repo.listAnnouncementsForTeacher(teacherId, page, limit);
     return { data, meta: { page, limit, total } };
   }

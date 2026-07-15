@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import type {
   CourseListFilters,
@@ -48,7 +49,7 @@ function mapCourseListItem(row: any): CourseListItem {
 
 export class PrismaCourseRepository implements CourseRepository {
   async listPublishedCourses(filters: CourseListFilters): Promise<PaginatedResult<CourseListItem>> {
-    const where = {
+    const where: Prisma.CourseWhereInput = {
       status: 'PUBLISHED',
       deletedAt: null,
       ...(filters.boardId ? { boardId: filters.boardId } : {}),

@@ -23,8 +23,11 @@ oasis-platform/
 
 ## Project status
 
-**Modules 1, 2, 3A, 3B, 3C, and 3D are all approved and FROZEN — together
-the source of truth for every module going forward.**
+**v0.1.0 — Foundation Complete.** Modules 1, 2, 3A, 3B, 3C, and 3D are
+all approved and FROZEN — together the source of truth for every module
+going forward. This tag marks the first complete, successful real-machine
+verification (Windows 11, Docker, an actual browser) across every
+surface of the application.
 
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
 real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
@@ -298,11 +301,12 @@ video/notes, public/CDN-fronted media).
 
 ## Next step
 
-Modules 1, 2, 3A, 3B, 3C, and 3D are frozen and are the project's
-permanent architecture — every module since builds on the
-`AuthRepository` pattern, the middleware pipeline, the error envelope,
-the env-validation approach, `optionalAuthenticate`, the two-tier
-signed-URL TTL convention, the ownership-assertion-before-every-write
-pattern, numeric move-up/down reordering, the public-`GET /settings`-for-
-dynamic-branding pattern, and the permanent `Branding/` Master Branding
-Package established there, rather than redesigning them.
+**v0.1.0 — Foundation Complete.** Modules 1, 2, 3A, 3B, 3C, and 3D are
+frozen and are the project's permanent architecture — every module since
+builds on the `AuthRepository` pattern, the middleware pipeline, the
+error envelope, the env-validation approach, `optionalAuthenticate`, the
+two-tier signed-URL TTL convention, the ownership-assertion-before-every-
+write pattern, numeric move-up/down reordering, the public-
+`GET /settings`-for-dynamic-branding pattern, and the permanent
+`Branding/` Master Branding Package established there, rather than
+redesigning them. Module 4 is next.

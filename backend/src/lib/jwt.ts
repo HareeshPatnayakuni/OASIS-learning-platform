@@ -5,7 +5,7 @@ import { env } from '../config/env';
 /**
  * Access tokens are the ONLY thing the JWT library touches. Refresh tokens
  * are deliberately opaque random strings, not JWTs — see
- * src/modules/auth/token.util.ts for why (short version: we need to store
+ * src/utils/token.util.ts for why (short version: we need to store
  * and revoke them server-side anyway, so a signed-but-unverifiable-without-
  * a-DB-lookup JWT would add complexity with no benefit).
  */

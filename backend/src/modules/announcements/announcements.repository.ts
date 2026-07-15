@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma';
 import type {
   AnnouncementRecord,
   CreateAnnouncementInput,
+  TeacherAnnouncementListItem,
   TeacherAnnouncementRepository,
   UpdateAnnouncementInput,
 } from './announcements.types';
@@ -80,12 +81,19 @@ export class PrismaTeacherAnnouncementRepository implements TeacherAnnouncementR
     teacherId: string,
     page: number,
     limit: number,
-  ): Promise<{ data: AnnouncementRecord[]; total: number }> {
+  ): Promise<{ data: TeacherAnnouncementListItem[]; total: number }> {
     const where = { deletedAt: null, authorId: teacherId };
     const [rows, total] = await Promise.all([
       prisma.announcement.findMany({
         where,
-        select: announcementSelect,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          createdAt: true,
+          course: { select: { id: true, title: true, slug: true } },
+          author: { select: { id: true, fullName: true } },
+        },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -94,9 +102,14 @@ export class PrismaTeacherAnnouncementRepository implements TeacherAnnouncementR
     ]);
     return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data: (rows as any[])
-        .filter((r) => r.courseId !== null)
-        .map((r) => ({ ...r, courseId: r.courseId as string })),
+      data: (rows as any[]).map((row) => ({
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        createdAt: row.createdAt,
+        course: row.course,
+        author: row.author,
+      })),
       total,
     };
   }

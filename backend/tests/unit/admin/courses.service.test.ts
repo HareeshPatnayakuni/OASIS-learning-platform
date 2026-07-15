@@ -70,6 +70,36 @@ describe('AdminCourseService.archiveCourse', () => {
   });
 });
 
+describe('AdminCourseService.restoreCourse', () => {
+  it('restores an archived course to Draft (not straight back to Published)', async () => {
+    const { repo } = createFakeAdminRepository({ courses: [buildCourse({ status: 'ARCHIVED' })] });
+    const service = new AdminCourseService(repo);
+
+    const restored = await service.restoreCourse('course-1');
+    expect(restored.status).toBe('DRAFT');
+  });
+
+  it('rejects restoring a course that is not currently archived', async () => {
+    const { repo } = createFakeAdminRepository({ courses: [buildCourse({ status: 'PUBLISHED' })] });
+    const service = new AdminCourseService(repo);
+
+    await expect(service.restoreCourse('course-1')).rejects.toMatchObject({
+      code: 'COURSE_NOT_ARCHIVED',
+      statusCode: 400,
+    });
+  });
+
+  it('404s for a course that does not exist', async () => {
+    const { repo } = createFakeAdminRepository({});
+    const service = new AdminCourseService(repo);
+
+    await expect(service.restoreCourse('nope')).rejects.toMatchObject({
+      code: 'COURSE_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+});
+
 describe('AdminCourseService.deleteCourse', () => {
   it('soft-deletes a course', async () => {
     const { repo, courses } = createFakeAdminRepository({ courses: [buildCourse()] });

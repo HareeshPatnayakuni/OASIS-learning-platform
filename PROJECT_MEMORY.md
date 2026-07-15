@@ -6,10 +6,10 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: after the
-cross-platform maintenance pass following Module 3D (see
-`docs/12-cross-platform-notes.md`) — not a feature module itself, no
-module-status change.
+Updated after every approved module. Last updated: **v0.1.0 — Foundation
+Complete** (see `CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, and 3D are all
+frozen; this is the first version tag, following the first complete,
+successful real-machine verification.
 
 ---
 
@@ -29,6 +29,12 @@ Board), built for a real institute's public launch. Full requirements:
 | 3B — Teacher Dashboard & Course Management | ✅ Frozen |
 | 3C — Admin Dashboard & Platform Management | ✅ Frozen |
 | 3D — Branding & UI Identity | ✅ Frozen |
+
+**Tagged `v0.1.0` — Foundation Complete** (`backend/package.json` and
+`frontend/package.json` both set to `0.1.0`). This is the first version
+tag on the project, marking the point where a complete, real-machine
+verification (Windows 11, Docker, an actual browser — not just this
+sandbox's own build/test/lint) passed end-to-end across every surface.
 
 Frozen means: don't redesign it. Extend it additively, the way Module 2
 added `VerificationToken` to the schema without touching any Module 1
@@ -416,19 +422,30 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   computed business values (e.g. course-unlock status) come from the API
   response, never re-derived client-side.
 - **Typography**: official brand fonts (Poppins for headings, Inter for
-  body — Module 3D), self-hosted via `@fontsource/poppins`/
-  `@fontsource/inter` (real WOFF2 files as npm package assets), imported
-  in `globals.css`, applied globally to `h1`–`h6` via `--font-heading`
-  and to `body` via `--font-sans`. This replaced Module 3A's original
-  system-font-stack choice — `next/font/google` was tried again at that
-  point and still hard-fails in this sandbox (no network path to
-  `fonts.googleapis.com`), so `@fontsource` was used instead specifically
-  *because* it satisfies the same original reasoning (avoid a third-party
-  origin serving content to end users) while also being genuinely
-  self-hosted rather than build-time-cached from one. If a future page
-  needs a font, use the existing `--font-sans`/`--font-heading` tokens —
-  don't add a third typeface without updating the Branding Package
-  source of truth first.
+  body — Module 3D), self-hosted via `next/font/local` in `layout.tsx`,
+  pointed directly at the real `.woff2` files shipped inside the
+  installed `@fontsource/poppins`/`@fontsource/inter` npm packages —
+  same actual font files either way, applied globally to `h1`–`h6` via
+  `--font-heading` and to `body` via `--font-sans` in `globals.css` (both
+  now reference the `next/font/local`-generated CSS variables
+  `var(--font-poppins)`/`var(--font-inter)`, set on `<html>` via each
+  font's `.variable`). This replaced Module 3A's original system-font
+  choice, then a `@fontsource` plain-CSS-`@import` approach that itself
+  had to be replaced — **confirmed via a real launch on Windows 11** that
+  raw `@import "@fontsource/poppins/400.css";` in `globals.css` throws
+  `CssSyntaxError: Can't resolve` under Next.js 16 + Turbopack: Turbopack's
+  CSS parser doesn't resolve `@import` into deep `node_modules` subpaths
+  the way Webpack did (a genuine, currently-open Turbopack limitation,
+  confirmed via multiple tracked upstream issues, not a project bug).
+  `next/font/local` sidesteps this because it's Next's own native font
+  pipeline (never a raw CSS `@import`), while still using the exact same
+  self-hosted `.woff2` files — verified end-to-end after switching
+  (production build, dev server, and the served font file itself all
+  confirmed working). If a future page needs a font, use the existing
+  `--font-sans`/`--font-heading` tokens — don't add a third typeface
+  without updating the Branding Package source of truth first, and don't
+  reintroduce a raw `@import` of an npm package's CSS in `globals.css`
+  (same Turbopack limitation would resurface).
 - **Logo assets**: real, extracted PNG files under
   `frontend/public/brand/` (Module 3D) — see
   `docs/11-module-3d-notes.md §8` for the full inventory and which crop
@@ -455,6 +472,37 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   `next start`, which is what a developer runs locally. Only
   `docker/frontend.Dockerfile` sets `DOCKER_BUILD=true`. Don't remove this
   gate without re-testing `npm start` locally afterward.
+- **The app is always light-themed — it deliberately does not follow
+  `prefers-color-scheme`.** `globals.css` has no dark-mode media query,
+  and there are no `dark:` Tailwind variants anywhere in the codebase;
+  don't reintroduce either. This was a real, reported bug, not a style
+  preference: a previous dark-mode override flipped `body`'s inherited
+  text color to near-white while several inputs' explicit light
+  backgrounds stayed put, making typed text genuinely invisible (the
+  Admin Settings page and the Platform Announcement textarea both hit
+  this for real). **Any `<input>`/`<textarea>` should set its own
+  explicit text color** (`text-neutral-900` or similar) rather than
+  relying on inherited body color — most of the existing `inputClass`
+  definitions across `admin/*` pages do this now; a couple of
+  older ones (`admin/courses`, `admin/students`, `admin/teachers`,
+  `teacher/courses/*`) still rely on inheritance, which is currently
+  safe only because the theme itself no longer varies — don't treat that
+  as license to skip an explicit color on a new one.
+- **Never nest an interactive element (`<button>`, or a component that
+  renders one, like `EditableTitle` or `Button`) inside a `<button>`.**
+  Invalid HTML — browsers auto-correct nested buttons in
+  parser-dependent, unpredictable ways, so this isn't just a console
+  warning, it's a real risk of inconsistent click/keyboard behavior
+  across browsers (confirmed as a real, reported bug in the Teacher
+  Course Builder's chapter row). If a row needs to be clickable *and*
+  contain its own inner interactive controls (a title that's separately
+  editable, action buttons, etc.), make the row a `<div role="button"
+  tabIndex={0} onClick={...} onKeyDown={...}>` instead of a `<button>` —
+  this is the standard ARIA pattern for exactly this case, and preserves
+  identical click behavior, Enter/Space keyboard activation, and
+  screen-reader semantics. Add `event.stopPropagation()` inside the
+  inner control's own handler so activating it doesn't also fire the
+  row's handler.
 
 ## 10. Coding standards
 
@@ -478,6 +526,26 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
   a gap in `docs/08-module-3a-notes.md §5`, not silently skipped) — if
   that changes, `AuthProvider`'s refresh-on-401 logic is the highest-value
   starting point.
+- **Tests must assert on the actual response *shape*, not just
+  filtering/counting behavior — a real bug shipped past this gap.**
+  `listAnnouncementsForTeacher` had a test confirming it filtered by
+  author correctly, but nothing ever asserted that `course`/`author`
+  were present and correctly nested — the endpoint had shipped returning
+  only flat `courseId`/`authorId` strings, silently missing the nested
+  display data the frontend actually renders, and this passed 238 tests
+  the whole time. When a repository method's return type includes
+  relation data a frontend will display (not just IDs used for logic),
+  write at least one test that asserts on that nested shape specifically
+  — a passing "only returns mine" test is not evidence the shape is right.
+- **Any Admin lifecycle action with an inverse (archive ↔ restore, etc.)
+  should mirror its counterpart's shape exactly at every layer** —
+  repository method, service method (including the same
+  assert-exists-first pattern), controller handler, route + Swagger doc,
+  and tests. See `admin.repository.ts`'s `archiveCourse`/`restoreCourse`
+  as the template. `restoreCourse` deliberately restores to `DRAFT`, not
+  back to `PUBLISHED` — an archived course becoming publicly visible
+  again is a Teacher's conscious call via their own existing Publish
+  action, never an automatic side effect of an Admin action.
 - **`package.json` scripts must never use shell-specific syntax**
   (env-var-assignment prefixes like `VAR=value cmd`, `&&` chains relying
   on a specific shell's semantics, etc.) — this project is meant to set
@@ -495,6 +563,22 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 
 ## 11. Known sandbox limitation (not a code issue)
 
+**This sandbox has no Docker, no real browser, and no network path to
+Google's font CDN or `binaries.prisma.sh`.** Three genuine bugs
+(`courses.repository.ts`'s enum typing, `token.util.ts`'s actual file
+location, `globals.css`'s font `@import`) were only ever found through an
+actual Windows 11 + Docker + browser launch, not through any amount of
+reasoning or structural verification possible here — in one case
+(`token.util.ts`), an earlier investigation in this project's history
+concluded a real-environment bug report was mistaken, based on a
+structural analysis that turned out to be checking the wrong ground
+truth. **When a concrete, reproduced report from a real launch conflicts
+with this sandbox's own reasoning, the real report wins** — this sandbox
+can rule things in (a fix compiles, tests pass) far more reliably than
+it can rule things out (a passing build here does not mean the same
+build passes for real, e.g. against a real generated Prisma Client or a
+real Turbopack CSS resolution pass).
+
 `prisma generate`/`migrate` cannot run in the development sandbox used to
 build this project — `binaries.prisma.sh` isn't reachable from it. All
 Prisma-facing code is still written normally and will work immediately
@@ -503,6 +587,40 @@ Business logic is validated via the mocked-repository unit-testing pattern
 above, which doesn't depend on a real Prisma client at all. Full detail:
 `docs/07-module-2-notes.md §6`.
 
+**Concrete, confirmed consequence (found via a real Docker build, not
+hypothetically):** the local stub types every model delegate as `any`
+(e.g. `course: any`), so it cannot catch type errors that only exist
+against Prisma's real, precisely-typed generated client. One such error
+actually surfaced this way: `courses.repository.ts`'s `listPublishedCourses`
+built its `where` clause as an intermediate `const where = { status:
+'PUBLISHED', ... }` (needed for conditional filter spreading) — assigning
+an object literal to a `const` first, rather than passing it inline,
+widens `status` to plain `string`, which the real `CourseWhereInput`
+rejects. **`satisfies` on just the `status` property alone is not
+sufficient to fix this** — it was tried first and confirmed not to work,
+because the widening happens at the level of the *containing object
+literal's* own type inference, not the individual property expression;
+`satisfies` on one property doesn't protect it from the object literal
+around it. **The fix that actually works: type the whole `where` object
+explicitly** — `const where: Prisma.CourseWhereInput = {...}` — which
+gives every property real contextual typing from Prisma's actual input
+type, same as an inline argument would. Both the failure mode and the
+fix were verified in isolation (a standalone reproduction outside the
+actual codebase) to confirm the mechanism precisely, not just that the
+real file happened to compile. The local Prisma stub
+(`node_modules/.prisma/client/default.d.ts`) was extended with a
+representative `Prisma.CourseWhereInput` type to make this properly
+testable — this stub file is local sandbox tooling only, replaced
+entirely by real generated types via `prisma generate` in any real
+environment. **Any new repository method that builds a `where`/`data`
+object incrementally (rather than as one inline literal) and includes an
+enum field must type the whole object explicitly with the real Prisma
+input type** (`Prisma.XWhereInput`/`Prisma.XCreateInput`/etc.) — not a
+per-property `satisfies`, which looks like it should work but doesn't.
+Every other existing occurrence of an enum status literal in the
+codebase was checked and confirmed to be passed inline (safe); this was
+the one exception.
+
 ## 12. Environment variables
 
 Full reference: `backend/.env.example` (kept in sync with
@@ -510,3 +628,16 @@ Full reference: `backend/.env.example` (kept in sync with
 not the code). Every variable is validated at startup; the process exits
 with a clear error if something required is missing or malformed
 (`config/env.ts:loadEnv()`).
+
+**Any genuinely-optional numeric env var must use `optionalPositiveIntEnv()`
+(or the same preprocess-empty-to-undefined pattern), never a bare
+`z.coerce.number().int().positive().optional()`.** Confirmed via a real
+launch: a present-but-blank value (`SMTP_PORT=`, exactly what's left
+after removing a placeholder from a template `.env`) coerces through JS's
+`Number('')`, which is `0`, not `NaN` — so it fails `.positive()` with a
+confusing error even though `.optional()` is right there on the schema.
+`.optional()` only skips validation for a *missing* key, not a
+*present-but-empty* one. `SMTP_PORT` was the reported case; the same
+helper should be used for any new optional numeric var, and the same
+`booleanEnv()` pattern already in this file solves the identical problem
+for optional booleans.

@@ -121,10 +121,17 @@ export default function CourseContentPage() {
                     })
                   }
                 />
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleChapter(chapter.id)}
-                  className="flex-1 text-left font-medium text-neutral-900"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleChapter(chapter.id);
+                    }
+                  }}
+                  className="flex-1 cursor-pointer text-left font-medium text-neutral-900"
                 >
                   {chapterIndex + 1}.{' '}
                   <EditableTitle
@@ -136,7 +143,7 @@ export default function CourseContentPage() {
                       })
                     }
                   />
-                </button>
+                </div>
                 <button
                   type="button"
                   onClick={() =>

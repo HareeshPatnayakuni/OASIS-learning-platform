@@ -9,8 +9,10 @@
 # This file is for LOCAL DEVELOPMENT ONLY. Production deployment targets
 # (Render/Railway/DigitalOcean/AWS/VPS) use backend.Dockerfile directly with
 # a managed Postgres instance — they do not use this compose file.
-
-version: "3.9"
+#
+# No top-level `version:` field: obsolete since Compose V2 (which infers
+# schema from the file itself) — including it produces a harmless but
+# noisy "the attribute `version` is obsolete" warning on every run.
 
 services:
   postgres:

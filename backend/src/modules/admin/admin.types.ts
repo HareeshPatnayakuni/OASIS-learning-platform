@@ -175,6 +175,7 @@ export interface AdminRepository {
   ): Promise<{ data: AdminCourseRecord[]; total: number }>;
   findCourseById(id: string): Promise<AdminCourseRecord | null>;
   archiveCourse(id: string): Promise<AdminCourseRecord>;
+  restoreCourse(id: string): Promise<AdminCourseRecord>;
   softDeleteCourse(id: string): Promise<void>;
 
   // Platform announcements

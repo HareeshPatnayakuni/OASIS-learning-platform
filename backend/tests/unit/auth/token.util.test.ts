@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { generateRawToken, hashToken } from '../../../src/modules/auth/token.util';
+import { generateRawToken, hashToken } from '../../../src/utils/token.util';
 import { env } from '../../../src/config/env';
 
 describe('token.util', () => {

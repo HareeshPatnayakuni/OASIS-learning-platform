@@ -13,7 +13,7 @@ import {
 import type { AuthRepository, AuthResult, PublicUser } from './auth.types';
 import { toPublicUser } from './auth.types';
 import { hashPassword, verifyPassword } from './password.util';
-import { generateRawToken, hashToken } from './token.util';
+import { generateRawToken, hashToken } from '../../utils/token.util';
 import { parseDeviceLabel } from './parseDeviceLabel';
 import type {
   ForgotPasswordInput,

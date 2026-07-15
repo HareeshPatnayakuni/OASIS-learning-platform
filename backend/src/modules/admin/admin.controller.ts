@@ -101,6 +101,12 @@ export class AdminController {
     res.status(200).json({ data: course });
   };
 
+  restoreCourse = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params as { id: string };
+    const course = await this.courses.restoreCourse(id);
+    res.status(200).json({ data: course });
+  };
+
   deleteCourse = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params as { id: string };
     await this.courses.deleteCourse(id);

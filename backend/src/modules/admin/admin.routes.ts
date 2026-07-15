@@ -276,7 +276,7 @@ router.get(
  * /admin/courses/{id}/archive:
  *   patch:
  *     tags: [Admin]
- *     summary: Archive a course (the only status change Admin can make — never Draft/Publish, that's a Teacher content decision)
+ *     summary: Archive a course (removes it from public visibility — never Draft/Publish directly, that's a Teacher content decision)
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses:
@@ -288,6 +288,26 @@ router.patch(
   ...adminOnly,
   validate({ params: idParamsSchema }),
   asyncHandler(controller.archiveCourse),
+);
+
+/**
+ * @openapi
+ * /admin/courses/{id}/restore:
+ *   patch:
+ *     tags: [Admin]
+ *     summary: Restore an archived course back to Draft (the Teacher then chooses when to Publish again via their own existing action — restoring never republishes automatically)
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses:
+ *       200: { description: Course restored to Draft }
+ *       400: { description: Course is not currently archived }
+ *       404: { description: Course not found }
+ */
+router.patch(
+  '/admin/courses/:id/restore',
+  ...adminOnly,
+  validate({ params: idParamsSchema }),
+  asyncHandler(controller.restoreCourse),
 );
 
 /**

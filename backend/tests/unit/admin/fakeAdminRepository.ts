@@ -138,6 +138,11 @@ export function createFakeAdminRepository(seed: {
       courses.set(id, updated);
       return updated;
     },
+    async restoreCourse(id) {
+      const updated = { ...courses.get(id)!, status: 'DRAFT' as CourseStatus };
+      courses.set(id, updated);
+      return updated;
+    },
     async softDeleteCourse(id) {
       courses.delete(id);
     },
