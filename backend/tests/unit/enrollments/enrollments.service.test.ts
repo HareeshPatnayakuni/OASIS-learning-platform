@@ -39,6 +39,15 @@ function createFakeEnrollmentRepository(options: {
     async countCompletedLecturesForStudentInCourse(_studentId: string, courseId: string) {
       return completedLectures[courseId] ?? 0;
     },
+    // Module 4A additions — not exercised by this suite (EnrollmentService's
+    // own tests only cover listMyCourses); minimal stubs to satisfy the
+    // interface. See tests/unit/payments for real coverage of these.
+    async findEnrollment() {
+      return null;
+    },
+    async createEnrollment(studentId: string, courseId: string) {
+      return { id: `${studentId}-${courseId}` };
+    },
   };
 }
 

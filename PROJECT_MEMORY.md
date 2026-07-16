@@ -6,10 +6,9 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: **v0.1.0 — Foundation
-Complete** (see `CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, and 3D are all
-frozen; this is the first version tag, following the first complete,
-successful real-machine verification.
+Updated after every approved module. Last updated: Module 4A (Payments
+Foundation), frozen after a final-review fix (see `CHANGELOG.md`).
+Modules 1, 2, 3A, 3B, 3C, 3D, and 4A are all frozen.
 
 ---
 
@@ -29,6 +28,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 3B — Teacher Dashboard & Course Management | ✅ Frozen |
 | 3C — Admin Dashboard & Platform Management | ✅ Frozen |
 | 3D — Branding & UI Identity | ✅ Frozen |
+| 4A — Payments Foundation | ✅ Frozen |
 
 **Tagged `v0.1.0` — Foundation Complete** (`backend/package.json` and
 `frontend/package.json` both set to `0.1.0`). This is the first version
@@ -55,7 +55,9 @@ rewrite of a frozen decision.
   devices per account.
 - **Storage:** Cloudflare R2 — two buckets (private for video/notes with
   signed URLs; public/CDN-fronted for images).
-- **Payments:** Razorpay (not yet built — see §8).
+- **Payments:** Razorpay (test mode), core purchase/verify flow built
+  Module 4A — see §8 for what's still deferred (webhooks, refunds,
+  invoices, coupons, etc.).
 - **Docs:** Swagger/OpenAPI at `/api/v1/docs`, generated from route JSDoc.
 
 ## 4. Backend architecture
@@ -168,6 +170,15 @@ LectureProgress) — those are immutable. `Question`/`QuestionOption`
 cascade-delete with their parent `Quiz` instead. `Enquiry` uses a status
 enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 
+**External-service `lib/` wrappers all follow one pattern** (`lib/r2.ts`
+Module 3A, `lib/razorpay.ts` Module 4A): build the client lazily from
+env vars that are `.optional()` at the schema level, so the app boots
+fine without that service configured; return `null`/skip if unconfigured;
+throw a dedicated `XNotConfiguredError` only at the point something
+actually tries to use it, with a message naming the exact env vars
+needed. Use this same shape for any future external service integration
+rather than making its credentials hard-required at startup.
+
 ## 5. Database conventions
 
 - UUID primary keys everywhere (public entities never expose sequential IDs).
@@ -243,6 +254,22 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 - Refresh tokens and verification tokens are never stored raw — only an
   HMAC-SHA256 hash (keyed with `JWT_REFRESH_SECRET`, see §7). The raw
   value exists only in the API response body or the emailed link.
+- **Any write that must update two tables together as one logical
+  outcome needs a real Prisma transaction — a genuine gap was found and
+  fixed here, not a hypothetical.** `PaymentService.verifyPayment`
+  originally called `markPaymentSuccess` (writes `Payment`) and
+  `createEnrollment` (writes `Enrollment`) as two separate calls; a
+  crash between them could leave a payment marked `SUCCESS` with no
+  enrollment — a paying student with no access, invisible until someone
+  specifically went looking. Fixed with
+  `PaymentRepository.markPaymentSuccessAndEnroll`, using
+  `prisma.$transaction([...])` (the array form; reach for the
+  interactive callback form `$transaction(async (tx) => ...)` only if a
+  later step genuinely needs to read an earlier step's result — this
+  case didn't). When a future module has a "write A, and only if A
+  succeeds also write B, as one atomic outcome" requirement, this is the
+  template — don't assume two sequential repository calls are good
+  enough just because each one individually succeeds most of the time.
 
 ## 6. API conventions
 
@@ -287,14 +314,25 @@ enum, not soft delete. Full rationale: `docs/03-database-design.md §2.6`.
 
 ## 8. Deferred / not yet built (don't assume these exist)
 
-- **Payments module** (Razorpay) — still not built. There is no API that
-  creates an `Enrollment` from a real purchase. Where a module needs
-  enrolled students to exist for testing, seed them directly
-  (`database/seed.ts`), the same way an Admin-granted scholarship
-  enrollment would work (`Enrollment.paymentId` is nullable for exactly
-  this reason). Confirmed still true as of Module 3C — the Course Details
-  page's "Enroll" CTA is a deliberately disabled button, not a broken
-  checkout flow.
+- **Payments module — core purchase/verify flow built (Module 4A)**:
+  `POST /courses/:courseId/purchase` and `POST /payments/verify` are
+  real, working endpoints; a real purchase now creates a real
+  `Enrollment`. **Still genuinely not built**, explicitly out of scope
+  for 4A: coupons, discounts-as-a-system (the existing `discountPrice`
+  field is honored as the effective charge amount, but there's no
+  customer-facing promo-code mechanism), wallet, subscriptions, refunds,
+  invoices (`Payment.invoiceUrl` exists in the schema but nothing
+  populates it), GST, email/SMS receipts, payment analytics, webhooks
+  (`RAZORPAY_WEBHOOK_SECRET` exists in config but nothing reads it —
+  Checkout's client callback + server-side signature verification is
+  the only completion path right now, so a closed browser tab mid-payment
+  leaves a `PENDING` row with no automatic resolution), and an Admin
+  finance dashboard. See `docs/13-module-4a-notes.md` for the full
+  design writeup. Admin-granted scholarship enrollment (seeding an
+  `Enrollment` directly with no `Payment`) is still the pattern for
+  tests/seed data that need an enrolled student without exercising the
+  real purchase flow — `Enrollment.paymentId` stays nullable for exactly
+  this reason.
 - **Media module — image uploads now cover course thumbnails (Module 3B)
   and academy logo/favicon (Module 3C)**: `POST /media` (`backend/src/modules/media/`)
   + `backend/src/lib/r2Public.ts`, now accepting both `TEACHER` and

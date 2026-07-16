@@ -72,4 +72,25 @@ export class PrismaEnrollmentRepository implements EnrollmentRepository {
       },
     });
   }
+
+  async findEnrollment(studentId: string, courseId: string): Promise<{ id: string } | null> {
+    return await prisma.enrollment.findUnique({
+      where: { studentId_courseId: { studentId, courseId } },
+      select: { id: true },
+    });
+  }
+
+  async createEnrollment(studentId: string, courseId: string, paymentId?: string): Promise<{ id: string }> {
+    // Reuses the existing @@unique([studentId, courseId]) constraint for
+    // idempotency: if a concurrent request already created the row (e.g.
+    // a double-submitted verify call), fetch and return that one instead
+    // of letting the unique-constraint violation bubble up as a 500.
+    const existing = await this.findEnrollment(studentId, courseId);
+    if (existing) return existing;
+
+    return prisma.enrollment.create({
+      data: { studentId, courseId, paymentId: paymentId ?? null },
+      select: { id: true },
+    });
+  }
 }

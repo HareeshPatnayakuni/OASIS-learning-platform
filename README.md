@@ -29,6 +29,23 @@ going forward. This tag marks the first complete, successful real-machine
 verification (Windows 11, Docker, an actual browser) across every
 surface of the application.
 
+**Module 4A (Payments Foundation): complete, pending your approval.**
+Razorpay Checkout integration — a free course enrolls immediately with
+no Razorpay involved at all; a paid course creates a Razorpay order,
+verifies the signature server-side after checkout (never trusting the
+frontend's own "success" claim), and only then creates the Payment
+record and the Enrollment. Reused rather than rebuilt wherever possible:
+the `Payment` model and its `PaymentStatus` enum already existed in the
+schema from Module 1's forward planning (only a missing `Course`
+relation was added), the `Enrollment` model's nullable `paymentId` was
+already there for exactly this, and course access control needed zero
+changes — the existing `isStudentEnrolled` check that already gates
+lecture/note access reads the same `Enrollment` table this module writes
+to. 13 new backend tests, one new frontend flow (the Course Details
+page's purchase button). See
+[`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) for the
+complete write-up.
+
 Module 2 (Repository Scaffolding, Infrastructure & Auth Module) shipped a
 real backend (Express + TypeScript + Prisma) and frontend (Next.js) —
 registration, login, JWT auth, password hashing, forgot password, email
@@ -134,6 +151,8 @@ architectural summary every future module should be checked against.
 | [`docs/09-module-3b-notes.md`](docs/09-module-3b-notes.md) | Module 3B design decisions and what was actually built/tested |
 | [`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) | Module 3C design decisions and what was actually built/tested |
 | [`docs/11-module-3d-notes.md`](docs/11-module-3d-notes.md) | Module 3D branding decisions and what was actually changed |
+| [`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) | Module 4A payments design decisions and what was actually built/tested |
+| [`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) | Module 4A payments design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -309,4 +328,12 @@ two-tier signed-URL TTL convention, the ownership-assertion-before-every-
 write pattern, numeric move-up/down reordering, the public-
 `GET /settings`-for-dynamic-branding pattern, and the permanent
 `Branding/` Master Branding Package established there, rather than
-redesigning them. Module 4 is next.
+redesigning them.
+
+**Module 4A (Payments Foundation) is frozen.** Razorpay test-mode
+checkout — free courses enroll instantly, paid courses go through a
+server-verified Razorpay Checkout flow before any Enrollment is created.
+A final review before freeze found and fixed one genuine data-consistency
+gap (payment success + enrollment creation are now one atomic
+transaction, not two separate writes). See `docs/13-module-4a-notes.md`.
+Module 4B is next.

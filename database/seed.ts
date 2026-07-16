@@ -77,6 +77,7 @@ async function main(): Promise<void> {
   }
   const mathematics = await prisma.subject.findUniqueOrThrow({ where: { slug: 'mathematics' } });
   const science = await prisma.subject.findUniqueOrThrow({ where: { slug: 'science' } });
+  const english = await prisma.subject.findUniqueOrThrow({ where: { slug: 'english' } });
 
   console.log('Seeding academy settings (singleton)...');
   const existingSettings = await prisma.academySettings.findFirst();
@@ -168,6 +169,24 @@ async function main(): Promise<void> {
       subjectId: science.id,
       teacherId: teacher.id,
       price: 799,
+      status: 'PUBLISHED',
+    },
+  });
+
+  // Module 4A: a free course to test the "enroll immediately, no
+  // Razorpay involved" path alongside the two paid courses above.
+  await prisma.course.upsert({
+    where: { slug: 'cbse-class-8-english-starter' },
+    update: {},
+    create: {
+      title: 'CBSE Class 8 English — Starter',
+      slug: 'cbse-class-8-english-starter',
+      description: 'A free introductory English course for CBSE Class 8 — grammar basics and short comprehension practice.',
+      boardId: cbse.id,
+      classGradeId: class8.id,
+      subjectId: english.id,
+      teacherId: teacher.id,
+      price: 0,
       status: 'PUBLISHED',
     },
   });

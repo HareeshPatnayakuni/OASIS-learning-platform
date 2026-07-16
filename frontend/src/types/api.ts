@@ -107,6 +107,25 @@ export interface CourseDetail extends CourseListItem {
   isEnrolled: boolean;
 }
 
+// ── Payments (Module 4A) ─────────────────────────────────────────────
+
+export type PurchaseResult =
+  | { type: 'ALREADY_ENROLLED' }
+  | { type: 'ENROLLED'; enrollmentId: string }
+  | {
+      type: 'CHECKOUT_REQUIRED';
+      paymentId: string;
+      razorpayOrderId: string;
+      amount: number;
+      currency: string;
+      keyId: string;
+    };
+
+export type VerifyPaymentResult =
+  | { type: 'SUCCESS'; enrollmentId: string }
+  | { type: 'ALREADY_PROCESSED'; enrollmentId: string };
+
+
 // ── Content (signed URLs / progress) ────────────────────────────────
 
 export interface SignedUrlResult {

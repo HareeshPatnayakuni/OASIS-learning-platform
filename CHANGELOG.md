@@ -7,6 +7,93 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 4A — Payments Foundation
+**Status:** Approved and frozen.
+
+### Final review fix
+One genuine data-consistency gap found during final review, before
+freeze: marking a payment `SUCCESS` and creating its enrollment were two
+separate, non-atomic writes — a crash or dropped connection between them
+could leave a payment marked `SUCCESS` with no corresponding enrollment
+(a paying student with no access). Fixed by combining both into one
+`PaymentRepository.markPaymentSuccessAndEnroll` method backed by a
+single `prisma.$transaction`, with the enrollment write changed to an
+`upsert` (closing a narrow concurrent-double-callback race at the same
+time). Added one regression test explicitly asserting this happens
+through one atomic call, not two. 256 backend tests total (was 255), all
+passing. See `docs/13-module-4a-notes.md §2` for the full write-up and
+`CHANGELOG.md`'s freeze verification report (in the conversation record)
+for the complete category-by-category audit.
+
+Razorpay TEST-mode payments: a free course enrolls a student
+immediately with no Razorpay involvement at all; a paid course goes
+through Razorpay Checkout, verified server-side (signature checked
+against the secret key, which never leaves the backend) before any
+Enrollment is created. Builds on schema groundwork Module 1 already laid
+down — `Payment` model, `PaymentStatus` enum, `Enrollment.paymentId`,
+and even the Razorpay env vars all already existed; the one real gap
+found and fixed was `Payment.courseId` having no actual `@relation` to
+`Course` (a loose string with no enforced foreign key).
+
+### Added
+- **Backend**: complete `payments` module (types, repository, service,
+  controller, validators, routes) — `POST /courses/:courseId/purchase`
+  (the single entry point; decides free-vs-paid server-side, every
+  time) and `POST /payments/verify` (never trusts the frontend's
+  "success" claim; verifies the Razorpay signature server-side using
+  the SDK's own verification helper before creating the Payment success
+  record or the Enrollment). `backend/src/lib/razorpay.ts` (new),
+  mirroring `lib/r2.ts`'s exact lazy-client/`NotConfiguredError` pattern.
+  Two additive methods (`findEnrollment`/`createEnrollment`) on the
+  previously read-only `enrollments` module — idempotent by
+  construction, so a duplicated callback or double-click can never
+  create two enrollments.
+- **Frontend**: `frontend/src/lib/razorpay.ts` (new — loads the
+  Checkout script, typed `window.Razorpay`). `CourseDetailClient.tsx`'s
+  purchase button, previously a permanently-disabled placeholder,
+  rewritten with the real flow: free → instant enroll; paid → Razorpay
+  Checkout with loading/error/cancelled states and an immediate,
+  reload-free transition to "Continue Learning" on success.
+- **Database**: `Payment.course` relation + `Course.payments` back-relation
+  (fixing the missing foreign key) and a new `@@index([userId, courseId])`.
+  Everything else in the `Payment`/`Enrollment` models is unchanged.
+- **Seed data**: a third demo course, free (`price: 0`), so both
+  enrollment paths are exercisable locally without real Razorpay
+  credentials.
+
+### Security
+Secret key never exposed to the frontend (only the public `keyId` is
+returned). Server-side signature verification on every payment, using
+Razorpay's own SDK helper. Ownership-checked verification (a student can
+only verify their own payment). Duplicate-callback-safe and
+duplicate-enrollment-safe by construction (idempotent `createEnrollment`,
+backed by the pre-existing `@@unique([studentId, courseId])`
+constraint). Course status/price re-validated server-side on every
+purchase attempt, never trusted from a stale frontend.
+
+### Confirmed unchanged
+Lecture/note access control (`ContentService.isStudentEnrolled`, Module
+3A) required no changes at all — it already checks the same
+`Enrollment` table this module writes to, fresh on every request. Zero
+lines of the content module were touched.
+
+Explicitly out of scope, not implemented: coupons, discounts-as-a-system,
+wallet, subscriptions, refunds, invoices, GST, promo codes, email/SMS
+receipts, analytics, webhooks, an Admin finance dashboard, international
+payments.
+
+Verified: 256 backend tests (14 new), `tsc`, lint, and build pass on
+both packages. Live-tested RBAC and validation on both new endpoints;
+confirmed present with zero parser errors in the generated OpenAPI spec.
+React Query and React Hook Form (named in the task's tech stack) were
+deliberately not introduced — no existing usage anywhere in the
+codebase, and a single button with no multi-field form doesn't warrant
+two new dependencies.
+
+See `docs/13-module-4a-notes.md` for the complete write-up.
+
+---
+
 ## v0.1.0 — Foundation Complete
 **Status:** Frozen. Modules 1, 2, 3A, 3B, 3C, and 3D are now permanent.
 

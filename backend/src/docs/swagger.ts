@@ -51,6 +51,11 @@ const options: swaggerJsdoc.Options = {
           'platform-wide announcements, and platform settings (Admin/Super Admin only)',
       },
       { name: 'Enrollments', description: "A student's own enrolled courses and computed progress" },
+      {
+        name: 'Payments',
+        description:
+          'Course purchase (free-instant-enroll or Razorpay checkout) and server-side payment verification (Student only)',
+      },
       { name: 'Users', description: 'Profile, Learning Streak, Continue Watching, Announcements' },
       { name: 'Search', description: 'Search across courses, chapters, and modules' },
     ],

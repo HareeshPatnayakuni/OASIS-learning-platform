@@ -215,6 +215,7 @@ model Course {
 
   chapters      Chapter[]
   enrollments   Enrollment[]
+  payments      Payment[]
   announcements Announcement[]
   liveClasses   LiveClass[]
 
@@ -376,6 +377,7 @@ model Payment {
   userId            String
   user              User          @relation(fields: [userId], references: [id])
   courseId          String
+  course            Course        @relation(fields: [courseId], references: [id])
   amount            Decimal       @db.Decimal(10, 2)
   currency          String        @default("INR")
   razorpayOrderId   String        @unique
@@ -389,6 +391,7 @@ model Payment {
   enrollment Enrollment?
 
   @@index([userId, status])
+  @@index([userId, courseId])
   @@map("payments")
 }
 

@@ -6,7 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { CourseSyllabus } from '@/components/course/CourseSyllabus';
-import type { CourseDetail } from '@/types/api';
+import { ApiClientError } from '@/lib/api-client';
+import { loadRazorpayCheckoutScript, type RazorpaySuccessResponse } from '@/lib/razorpay';
+import type { CourseDetail, PurchaseResult, VerifyPaymentResult } from '@/types/api';
 
 export function CourseDetailClient({ initialCourse }: { initialCourse: CourseDetail }) {
   const { isAuthenticated, user, authFetch } = useAuth();
@@ -65,7 +67,13 @@ export function CourseDetailClient({ initialCourse }: { initialCourse: CourseDet
               <img src={course.thumbnailUrl} alt="" className="mb-4 aspect-video w-full rounded-lg object-cover" />
             ) : null}
 
-            <EnrollmentCta course={course} isAuthenticated={isAuthenticated} isStudent={user?.role === 'STUDENT'} />
+            <EnrollmentCta
+              course={course}
+              isAuthenticated={isAuthenticated}
+              isStudent={user?.role === 'STUDENT'}
+              authFetch={authFetch}
+              onEnrolled={() => setCourse((prev) => ({ ...prev, isEnrolled: true }))}
+            />
           </div>
         </aside>
       </div>
@@ -77,11 +85,18 @@ function EnrollmentCta({
   course,
   isAuthenticated,
   isStudent,
+  authFetch,
+  onEnrolled,
 }: {
   course: CourseDetail;
   isAuthenticated: boolean;
   isStudent: boolean;
+  authFetch: <T>(path: string, options?: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown }) => Promise<T>;
+  onEnrolled: () => void;
 }) {
+  const [status, setStatus] = useState<'idle' | 'processing' | 'error' | 'cancelled'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   if (course.isEnrolled) {
     return (
       <Link href={`/student/courses/${course.slug}/learn`}>
@@ -126,14 +141,100 @@ function EnrollmentCta({
     return priceDisplay;
   }
 
+  const effectivePrice = course.discountPrice ?? course.price;
+  const isFree = effectivePrice <= 0;
+
+  async function verifyAndEnroll(response: RazorpaySuccessResponse): Promise<void> {
+    try {
+      await authFetch<VerifyPaymentResult>('/payments/verify', {
+        method: 'POST',
+        body: {
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+        },
+      });
+      setStatus('idle');
+      onEnrolled();
+    } catch (err) {
+      setStatus('error');
+      setErrorMessage(
+        err instanceof ApiClientError
+          ? err.message
+          : 'Payment verification failed. If an amount was deducted, please contact support.',
+      );
+    }
+  }
+
+  async function handlePurchase(): Promise<void> {
+    setStatus('processing');
+    setErrorMessage(null);
+    try {
+      const result = await authFetch<PurchaseResult>(`/courses/${course.id}/purchase`, { method: 'POST' });
+
+      if (result.type === 'ALREADY_ENROLLED' || result.type === 'ENROLLED') {
+        setStatus('idle');
+        onEnrolled();
+        return;
+      }
+
+      // CHECKOUT_REQUIRED — open Razorpay Checkout with the order the
+      // backend just created. Never trust anything this modal reports
+      // as "success" on its own; verifyAndEnroll re-checks with the
+      // backend before the student gets access.
+      await loadRazorpayCheckoutScript();
+      if (!window.Razorpay) {
+        throw new Error('Could not load the payment window. Please check your connection and try again.');
+      }
+
+      const checkout = new window.Razorpay({
+        key: result.keyId,
+        amount: result.amount,
+        currency: result.currency,
+        order_id: result.razorpayOrderId,
+        name: 'OASIS',
+        description: course.title,
+        theme: { color: '#1E5BFF' },
+        handler: (response) => {
+          setStatus('processing');
+          void verifyAndEnroll(response);
+        },
+        modal: {
+          ondismiss: () => setStatus('cancelled'),
+        },
+      });
+
+      checkout.on('payment.failed', (failure) => {
+        setStatus('error');
+        setErrorMessage(failure.error?.description ?? 'Payment failed. Please try again.');
+      });
+
+      checkout.open();
+    } catch (err) {
+      setStatus('error');
+      setErrorMessage(err instanceof ApiClientError ? err.message : 'Something went wrong. Please try again.');
+    }
+  }
+
   return (
     <>
       {priceDisplay}
-      {/* Payments module isn't built yet (PROJECT_MEMORY.md §8) — this is
-          deliberately disabled and honest about that, rather than a
-          checkout button that leads nowhere. */}
-      <Button variant="secondary" size="lg" className="w-full" disabled title="Checkout is coming soon">
-        Enrollment coming soon
+      {status === 'error' && errorMessage ? (
+        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errorMessage}</p>
+      ) : null}
+      {status === 'cancelled' ? (
+        <p className="mb-3 rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600">
+          Checkout was cancelled — you haven&apos;t been charged. You can try again anytime.
+        </p>
+      ) : null}
+      <Button
+        variant="primary"
+        size="lg"
+        className="w-full"
+        disabled={status === 'processing'}
+        onClick={() => void handlePurchase()}
+      >
+        {status === 'processing' ? 'Processing…' : isFree ? 'Enroll for free' : 'Buy Now'}
       </Button>
     </>
   );
