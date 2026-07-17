@@ -10,11 +10,11 @@ import {
   buildPasswordResetEmail,
   withRecipient,
 } from '../../lib/email';
-import type { AuthRepository, AuthResult, PublicUser } from './auth.types';
+import type { AuthRepository, AuthResult, DeviceSummary, PublicUser } from './auth.types';
 import { toPublicUser } from './auth.types';
 import { hashPassword, verifyPassword } from './password.util';
 import { generateRawToken, hashToken } from '../../utils/token.util';
-import { parseDeviceLabel } from './parseDeviceLabel';
+import { parseDeviceInfo } from './parseDeviceInfo';
 import type {
   ForgotPasswordInput,
   LoginInput,
@@ -112,8 +112,8 @@ export class AuthService {
 
     await this.enforceDeviceLimit(user.id, input.deviceId);
 
-    const deviceLabel = parseDeviceLabel(userAgent);
-    await this.repo.upsertDeviceSession(user.id, input.deviceId, deviceLabel);
+    const deviceInfo = parseDeviceInfo(userAgent);
+    await this.repo.upsertDeviceSession(user.id, input.deviceId, deviceInfo);
 
     const tokens = await this.issueTokenPair(user.id, user.role, input.deviceId);
 
@@ -191,6 +191,48 @@ export class AuthService {
   async logoutAll(userId: string): Promise<void> {
     await this.repo.revokeAllRefreshTokens(userId);
     await this.repo.deleteAllDeviceSessions(userId);
+  }
+
+  // ── Device management (Module 5) ────────────────────────────────────
+
+  /** Newest-active-first. `currentDeviceId` is supplied by the frontend
+   * (the same stable, client-generated ID already sent on every login/
+   * refresh — see auth-storage.ts) purely to mark which row in the
+   * response is "this device"; the backend has no other way to know,
+   * since access tokens deliberately don't carry deviceId (see
+   * middleware/authenticate.ts — kept minimal on purpose). */
+  async listMyDevices(userId: string, currentDeviceId: string): Promise<DeviceSummary[]> {
+    const sessions = await this.repo.listActiveDeviceSessions(userId);
+    return sessions.map((session) => ({
+      deviceId: session.deviceId,
+      deviceLabel: session.deviceLabel,
+      browser: session.browser,
+      operatingSystem: session.operatingSystem,
+      lastActiveAt: session.lastActiveAt,
+      isCurrentDevice: session.deviceId === currentDeviceId,
+    }));
+  }
+
+  /** Removing a device revokes every refresh token it holds (so it can't
+   * silently mint a new access token) and deletes its session row (so it
+   * stops counting against the 2-device limit) — both, always together;
+   * see docs/15-module-5-notes.md for why a device is never removed
+   * without also revoking its tokens. */
+  async removeDevice(userId: string, currentDeviceId: string, targetDeviceId: string): Promise<void> {
+    if (targetDeviceId === currentDeviceId) {
+      throw ApiError.badRequest(
+        'CANNOT_REMOVE_CURRENT_DEVICE',
+        "You can't remove the device you're currently using. Log out instead.",
+      );
+    }
+
+    const session = await this.repo.findDeviceSession(userId, targetDeviceId);
+    if (!session) {
+      throw ApiError.notFound('DEVICE_NOT_FOUND', 'Device not found');
+    }
+
+    await this.repo.revokeRefreshTokensForDevice(userId, targetDeviceId);
+    await this.repo.deleteDeviceSession(userId, targetDeviceId);
   }
 
   // ── Password reset ──────────────────────────────────────────────────

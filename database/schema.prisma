@@ -134,13 +134,15 @@ model RefreshToken {
 
 // Tracks distinct devices currently counted against the 2-device login limit.
 model DeviceSession {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceId     String // client-generated stable identifier
-  deviceLabel  String? // e.g. "Chrome on Windows", set from User-Agent
-  lastActiveAt DateTime @default(now())
-  createdAt    DateTime @default(now())
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId        String // client-generated stable identifier
+  deviceLabel     String? // e.g. "Chrome on Windows", set from User-Agent — kept as a single human-friendly name alongside the split-out fields below
+  browser         String? // e.g. "Chrome" — Module 5, split out from deviceLabel for the My Devices page's separate Browser column
+  operatingSystem String? // e.g. "Windows" — same as above, for the Operating System column
+  lastActiveAt    DateTime @default(now())
+  createdAt       DateTime @default(now())
 
   @@unique([userId, deviceId])
   @@map("device_sessions")

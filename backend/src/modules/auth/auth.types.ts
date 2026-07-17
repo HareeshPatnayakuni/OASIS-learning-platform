@@ -45,7 +45,21 @@ export interface DeviceSessionRecord {
   userId: string;
   deviceId: string;
   deviceLabel: string | null;
+  browser: string | null;
+  operatingSystem: string | null;
   lastActiveAt: Date;
+}
+
+/** The shape returned to the frontend by GET /devices — a thinner,
+ * purpose-built view of DeviceSessionRecord (no internal `id`/`userId`),
+ * with `isCurrentDevice` computed per-request rather than stored. */
+export interface DeviceSummary {
+  deviceId: string;
+  deviceLabel: string | null;
+  browser: string | null;
+  operatingSystem: string | null;
+  lastActiveAt: Date;
+  isCurrentDevice: boolean;
 }
 
 export interface RefreshTokenRecord {
@@ -78,13 +92,27 @@ export interface AuthRepository {
   upsertDeviceSession(
     userId: string,
     deviceId: string,
-    deviceLabel: string | null,
+    info: { label: string | null; browser: string | null; operatingSystem: string | null },
   ): Promise<DeviceSessionRecord>;
   /** Updates lastActiveAt only — used on refresh, where we want to record
    * activity without overwriting an already-known deviceLabel. */
   touchDeviceSession(userId: string, deviceId: string): Promise<void>;
   deleteDeviceSession(userId: string, deviceId: string): Promise<void>;
   deleteAllDeviceSessions(userId: string): Promise<void>;
+  /**
+   * Every session whose device has no unexpired, unrevoked refresh token
+   * left is excluded from the result (Module 5's "expired sessions no
+   * longer count as active" requirement) and opportunistically deleted —
+   * no separate scheduled cleanup job (explicitly out of scope); a stale
+   * row is simply cleaned up the next time anyone looks. Newest-active-first.
+   */
+  listActiveDeviceSessions(userId: string): Promise<DeviceSessionRecord[]>;
+  /** Revokes every refresh token — current and any not-yet-rotated-out
+   * historical ones — for one specific device, without touching the
+   * user's other devices. Used by "remove device"; deliberately separate
+   * from revokeAllRefreshTokens (all devices) and revokeRefreshToken (one
+   * token by its own id) rather than reusing either. */
+  revokeRefreshTokensForDevice(userId: string, deviceId: string): Promise<void>;
 
   createRefreshToken(input: {
     userId: string;

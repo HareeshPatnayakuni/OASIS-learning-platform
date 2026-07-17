@@ -49,8 +49,29 @@ export class PrismaAuthRepository implements AuthRepository {
     await prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
   }
 
+  /**
+   * Single source of truth for "which of this user's devices are still
+   * genuinely active" — a device only counts if it has at least one
+   * refresh token that hasn't expired or been revoked. Used by both
+   * `countDeviceSessions` (login-time limit enforcement) and
+   * `listActiveDeviceSessions` (the My Devices page), so the two can
+   * never disagree about what's active — see auth.service.ts's
+   * enforceDeviceLimit and Module 5's "expired sessions no longer count"
+   * requirement.
+   */
+  private async getValidDeviceIds(userId: string): Promise<Set<string>> {
+    const validTokens = await prisma.refreshToken.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { deviceId: true },
+      distinct: ['deviceId'],
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
+    return new Set((validTokens as any[]).map((t) => t.deviceId as string));
+  }
+
   async countDeviceSessions(userId: string): Promise<number> {
-    return await prisma.deviceSession.count({ where: { userId } });
+    const validDeviceIds = await this.getValidDeviceIds(userId);
+    return validDeviceIds.size;
   }
 
   async findDeviceSession(userId: string, deviceId: string): Promise<DeviceSessionRecord | null> {
@@ -62,12 +83,17 @@ export class PrismaAuthRepository implements AuthRepository {
   async upsertDeviceSession(
     userId: string,
     deviceId: string,
-    deviceLabel: string | null,
+    info: { label: string | null; browser: string | null; operatingSystem: string | null },
   ): Promise<DeviceSessionRecord> {
     return await prisma.deviceSession.upsert({
       where: { userId_deviceId: { userId, deviceId } },
-      create: { userId, deviceId, deviceLabel },
-      update: { deviceLabel, lastActiveAt: new Date() },
+      create: { userId, deviceId, deviceLabel: info.label, browser: info.browser, operatingSystem: info.operatingSystem },
+      update: {
+        deviceLabel: info.label,
+        browser: info.browser,
+        operatingSystem: info.operatingSystem,
+        lastActiveAt: new Date(),
+      },
     });
   }
 
@@ -87,6 +113,33 @@ export class PrismaAuthRepository implements AuthRepository {
 
   async deleteAllDeviceSessions(userId: string): Promise<void> {
     await prisma.deviceSession.deleteMany({ where: { userId } });
+  }
+
+  async listActiveDeviceSessions(userId: string): Promise<DeviceSessionRecord[]> {
+    const validDeviceIds = await this.getValidDeviceIds(userId);
+    const allSessions = await prisma.deviceSession.findMany({
+      where: { userId },
+      orderBy: { lastActiveAt: 'desc' },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessions = allSessions as any[];
+    const stale = sessions.filter((s) => !validDeviceIds.has(s.deviceId as string));
+    if (stale.length > 0) {
+      // Opportunistic cleanup — no separate scheduled job (explicitly out
+      // of scope for Module 5); a session with no valid refresh token
+      // left is simply cleaned up the next time anyone looks at the list.
+      await prisma.deviceSession.deleteMany({
+        where: { id: { in: stale.map((s) => s.id as string) } },
+      });
+    }
+    return sessions.filter((s) => validDeviceIds.has(s.deviceId as string)) as DeviceSessionRecord[];
+  }
+
+  async revokeRefreshTokensForDevice(userId: string, deviceId: string): Promise<void> {
+    await prisma.refreshToken.updateMany({
+      where: { userId, deviceId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   async createRefreshToken(input: {

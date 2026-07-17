@@ -197,6 +197,25 @@ describe('AuthService.login', () => {
     ).resolves.toBeDefined();
   });
 
+  it('allows a 3rd device once an existing device session has fully expired (Automatic Cleanup)', async () => {
+    const { service, _debug } = buildService();
+    await registerUser(service);
+    await service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-1' }, undefined);
+    await service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-2' }, undefined);
+
+    // Simulate device-1's refresh token having expired days ago — no
+    // scheduled cleanup job runs this (explicitly out of scope); the
+    // repository's own device-count query is expected to simply stop
+    // counting it once its token is no longer valid.
+    for (const token of _debug.refreshTokens.values()) {
+      if (token.deviceId === 'device-1') token.expiresAt = new Date(Date.now() - 1000);
+    }
+
+    await expect(
+      service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-3' }, undefined),
+    ).resolves.toBeDefined();
+  });
+
   it('parses a human-readable device label from the User-Agent header', async () => {
     const { service, _debug } = buildService();
     await registerUser(service);
@@ -468,5 +487,125 @@ describe('AuthService.verifyEmail / resendVerification', () => {
   it('resendVerification resolves silently for an unknown email', async () => {
     const { service } = buildService();
     await expect(service.resendVerification({ email: 'nobody@example.com' })).resolves.toBeUndefined();
+  });
+});
+
+describe('AuthService.listMyDevices', () => {
+  async function registerAndLoginTwice(service: AuthService) {
+    await service.register({ fullName: 'Aisha Khan', email: 'aisha@example.com', password: VALID_PASSWORD });
+    await service.login(
+      { email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-1' },
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36',
+    );
+    await service.login(
+      { email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-2' },
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1',
+    );
+  }
+
+  it("marks exactly the device matching currentDeviceId as isCurrentDevice, and none of the others", async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+
+    const devices = await service.listMyDevices(userId, 'device-2');
+
+    expect(devices).toHaveLength(2);
+    const current = devices.find((d) => d.deviceId === 'device-2');
+    const other = devices.find((d) => d.deviceId === 'device-1');
+    expect(current?.isCurrentDevice).toBe(true);
+    expect(other?.isCurrentDevice).toBe(false);
+  });
+
+  it('parses browser and operating system separately, matching the combined deviceLabel', async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+
+    const devices = await service.listMyDevices(userId, 'device-1');
+
+    const windowsDevice = devices.find((d) => d.deviceId === 'device-1');
+    expect(windowsDevice).toMatchObject({ browser: 'Chrome', operatingSystem: 'Windows', deviceLabel: 'Chrome on Windows' });
+    const iphoneDevice = devices.find((d) => d.deviceId === 'device-2');
+    expect(iphoneDevice).toMatchObject({ browser: 'Safari', operatingSystem: 'iOS' });
+  });
+
+  it('excludes a device whose refresh token has fully expired', async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+    for (const token of _debug.refreshTokens.values()) {
+      if (token.deviceId === 'device-2') token.expiresAt = new Date(Date.now() - 1000);
+    }
+
+    const devices = await service.listMyDevices(userId, 'device-1');
+
+    expect(devices).toHaveLength(1);
+    expect(devices[0]?.deviceId).toBe('device-1');
+  });
+});
+
+describe('AuthService.removeDevice', () => {
+  async function registerAndLoginTwice(service: AuthService) {
+    await service.register({ fullName: 'Aisha Khan', email: 'aisha@example.com', password: VALID_PASSWORD });
+    await service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-1' }, undefined);
+    await service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-2' }, undefined);
+  }
+
+  it("removes another device, revoking its refresh tokens and deleting its session", async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+
+    await service.removeDevice(userId, 'device-1', 'device-2');
+
+    expect(await service.listMyDevices(userId, 'device-1')).toHaveLength(1);
+    const device2Tokens = [..._debug.refreshTokens.values()].filter((t) => t.deviceId === 'device-2');
+    expect(device2Tokens.every((t) => t.revokedAt !== null)).toBe(true);
+  });
+
+  it('frees a slot for a new device once the removed device is gone', async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+    await service.removeDevice(userId, 'device-1', 'device-2');
+
+    await expect(
+      service.login({ email: 'aisha@example.com', password: VALID_PASSWORD, deviceId: 'device-3' }, undefined),
+    ).resolves.toBeDefined();
+  });
+
+  it('refuses to remove the current device', async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+
+    await expect(service.removeDevice(userId, 'device-1', 'device-1')).rejects.toMatchObject({
+      code: 'CANNOT_REMOVE_CURRENT_DEVICE',
+      statusCode: 400,
+    });
+  });
+
+  it('404s for a device that does not exist (or already belongs to no one)', async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+
+    await expect(service.removeDevice(userId, 'device-1', 'device-nonexistent')).rejects.toMatchObject({
+      code: 'DEVICE_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+
+  it("removing a device is idempotent from a data-consistency standpoint — a second removal attempt 404s rather than double-revoking", async () => {
+    const { service, _debug } = buildService();
+    await registerAndLoginTwice(service);
+    const userId = [..._debug.users.values()][0]!.id;
+    await service.removeDevice(userId, 'device-1', 'device-2');
+
+    await expect(service.removeDevice(userId, 'device-1', 'device-2')).rejects.toMatchObject({
+      code: 'DEVICE_NOT_FOUND',
+      statusCode: 404,
+    });
   });
 });

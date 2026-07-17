@@ -57,6 +57,11 @@ const options: swaggerJsdoc.Options = {
           'Course purchase (free-instant-enroll or Razorpay checkout), server-side payment verification, and read-only payment history/detail (Student only — the equivalent Admin oversight endpoints are tagged Admin)',
       },
       { name: 'Users', description: 'Profile, Learning Streak, Continue Watching, Announcements' },
+      {
+        name: 'Devices',
+        description:
+          'Manage the 2-active-device login limit (Module 5) — list and remove devices on your own account. Any authenticated role (Student, Teacher, Admin).',
+      },
       { name: 'Search', description: 'Search across courses, chapters, and modules' },
     ],
   },

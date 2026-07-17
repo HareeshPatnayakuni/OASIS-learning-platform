@@ -80,6 +80,12 @@ export function Navbar() {
                     My Payments
                   </Link>
                   <Link
+                    href="/student/devices"
+                    className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
+                  >
+                    My Devices
+                  </Link>
+                  <Link
                     href="/student/profile"
                     className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
                   >

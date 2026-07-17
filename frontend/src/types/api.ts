@@ -156,6 +156,17 @@ export interface AdminPaymentListItem {
   course: { id: string; title: string; slug: string };
 }
 
+// ── Devices (Module 5) ────────────────────────────────────────────────
+
+export interface DeviceSummary {
+  deviceId: string;
+  deviceLabel: string | null;
+  browser: string | null;
+  operatingSystem: string | null;
+  lastActiveAt: string;
+  isCurrentDevice: boolean;
+}
+
 
 // ── Content (signed URLs / progress) ────────────────────────────────
 

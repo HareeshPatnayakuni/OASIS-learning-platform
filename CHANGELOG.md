@@ -7,6 +7,89 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 5 — Device Management
+**Status:** Approved and frozen.
+
+### Pre-freeze review
+One focused check before freeze: what happens to an already-issued
+access token belonging to a device that gets removed? Confirmed
+directly from `middleware/authenticate.ts` — access tokens are verified
+statelessly (JWT signature + expiry only, no database lookup, no
+`deviceId` in the payload), so a removed device's access token remains
+valid for up to `JWT_ACCESS_EXPIRY` (15 minutes) after removal, though
+it can never be refreshed past that point since the refresh token is
+already revoked. Accepted as-is — this is the identical, already-documented
+trade-off this codebase already uses for account deactivation, not a new
+gap. No code changed. See `docs/15-module-5-notes.md §5` for the full
+reasoning.
+
+The 2-active-device login limit was already substantially built in
+Module 2 — this module completes it: a My Devices page, the ability to
+remove a specific other device, and a real, confirmed bug fix for
+"expired sessions no longer count as active."
+
+### The confirmed bug
+`countDeviceSessions` counted every `DeviceSession` row unconditionally,
+with no awareness of whether its refresh token had actually expired. A
+student who let a session expire naturally (closed the tab, never
+explicitly logged out) stayed locked at their device limit forever,
+since nothing ever removed the stale row. Fixed with a shared
+`getValidDeviceIds` helper — a device only counts if it has an
+unexpired, unrevoked refresh token — used by both the login-time limit
+check and the new device list, so the two can never disagree about
+what's "active." No scheduled cleanup job: stale sessions are deleted
+opportunistically the next time anyone lists their devices.
+
+### Added
+- **Backend**: `GET /devices` (list, newest-active-first, current device
+  marked) and `DELETE /devices/:deviceId` (revokes every refresh token
+  for that device *and* deletes its session, always together — never
+  one without the other). Both available to any authenticated role
+  (Student, Teacher, Admin) — the 2-device limit already applied
+  identically to all of them before this module. New
+  `modules/devices/` is routing-only; both endpoints delegate directly
+  to `AuthService` (Module 2), with no duplicated authentication logic
+  and no separate repository.
+- **`AuthService` gains two new methods** (`listMyDevices`,
+  `removeDevice`) — additive; every existing method's behavior is
+  unchanged for existing callers.
+- **Frontend**: My Devices page (`/student/devices`) — device list,
+  Remove button (hidden for the current device), a native `confirm()`
+  dialog before removal (matching this codebase's existing pattern for
+  destructive actions), empty state, loading state, and a retry-capable
+  error state. Added to the Navbar alongside the existing My Payments/
+  Profile links.
+- **Database**: `DeviceSession.browser` and `DeviceSession.operatingSystem`
+  — two new nullable columns, additive, so the My Devices page can show
+  Browser and Operating System as genuinely separate fields rather than
+  re-parsing the existing combined `deviceLabel` string. `deviceLabel`
+  itself is unchanged.
+- **`parseDeviceLabel.ts` renamed to `parseDeviceInfo.ts`** — now returns
+  `{label, browser, operatingSystem}` instead of a single string. One
+  caller, updated alongside it.
+
+### Security
+Removing a device always revokes its tokens and deletes its session
+together — never one without the other, closing the gap where a removed
+device could keep a still-usable refresh token, or a revoked-but-not-deleted
+session could keep counting against the limit. "Cannot remove the
+current device" is checked before the target device is even looked up.
+Device-limit enforcement's normal-case behavior (reject a genuine 3rd
+device, never auto-evict an existing one) is completely unchanged —
+confirmed by the full existing Module 2 test suite still passing
+unmodified.
+
+Verified: 277 backend tests (13 new), `tsc`, lint, and build pass on
+both packages. Both new endpoints live-tested as reachable by Student,
+Teacher, and Admin tokens alike (confirming the role-agnostic design)
+and confirmed present with zero parser errors in the live OpenAPI spec
+(75 paths, up from 73). All frontend pages, including the new one,
+live-checked at `200` with zero error-boundary indicators.
+
+See `docs/15-module-5-notes.md` for the complete write-up.
+
+---
+
 ## Module 4B — Payment Management
 **Status:** Complete, pending approval.
 

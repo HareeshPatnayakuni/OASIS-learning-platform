@@ -6,9 +6,10 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: Module 4B (Payment
-Management), complete and pending approval, following Module 4A (see
-`CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, 3D, and 4A are frozen.
+Updated after every approved module. Last updated: Module 5 (Device
+Management), frozen after a focused pre-freeze review (see
+`CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, 3D, 4A, 4B, and 5 are all
+frozen.
 
 ---
 
@@ -29,7 +30,8 @@ Board), built for a real institute's public launch. Full requirements:
 | 3C — Admin Dashboard & Platform Management | ✅ Frozen |
 | 3D — Branding & UI Identity | ✅ Frozen |
 | 4A — Payments Foundation | ✅ Frozen |
-| 4B — Payment Management | 🚧 Complete, pending approval |
+| 4B — Payment Management | ✅ Frozen |
+| 5 — Device Management | ✅ Frozen |
 
 **Tagged `v0.1.0` — Foundation Complete** (`backend/package.json` and
 `frontend/package.json` both set to `0.1.0`). This is the first version
@@ -302,9 +304,28 @@ rather than making its credentials hard-required at startup.
   from `JWT_ACCESS_SECRET` — it's an HMAC key, not a JWT-signing key.
 - 2-device limit: Strategy A — reject a 3rd distinct device outright
   (`DEVICE_LIMIT_REACHED`, 409). Logging in again on an already-known
-  device never counts against the limit. `POST /auth/logout-all` is the
-  escape hatch until a granular per-device revoke endpoint exists (Users
-  module, not yet built).
+  device never counts against the limit. A device only counts as active
+  if it has an unexpired, unrevoked refresh token — a device whose
+  session expired naturally (never explicitly logged out) stops
+  counting automatically, cleaned up opportunistically whenever anyone
+  next lists their devices (Module 5's `AuthRepository.getValidDeviceIds`
+  — no scheduled job anywhere). `POST /auth/logout-all` (all devices) and
+  `DELETE /devices/:deviceId` (Module 5, one specific *other* device —
+  the requesting device can never remove itself) are both real,
+  built endpoints now.
+- **Revoking a refresh token (logout, remove-device, password reset,
+  account deactivation) does not invalidate an already-issued access
+  token.** `authenticate.ts` verifies access tokens statelessly — JWT
+  signature + expiry only, no database lookup, no `deviceId` in the
+  payload at all — by deliberate design (see that file's own comment).
+  A revoked/removed device's last-issued access token keeps working for
+  up to `JWT_ACCESS_EXPIRY` (15 minutes) after revocation, but can never
+  refresh past that point. Reviewed explicitly for Module 5 (device
+  removal) and accepted as the same already-established trade-off used
+  for account deactivation — not a gap to close by adding a DB check to
+  every authenticated request. If a future requirement genuinely needs
+  tighter revocation, that's a deliberate architectural change, not a
+  quiet fix.
 - Password policy: min 8 chars, at least one letter, one number
   (`auth.validators.ts`).
 - Email verification is a **soft gate** — unverified users can still log in

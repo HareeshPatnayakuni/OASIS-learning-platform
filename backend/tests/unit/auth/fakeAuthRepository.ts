@@ -28,6 +28,17 @@ export function createFakeAuthRepository() {
 
   const deviceKey = (userId: string, deviceId: string): string => `${userId}:${deviceId}`;
 
+  function getValidDeviceIds(userId: string): Set<string> {
+    const valid = new Set<string>();
+    const now = Date.now();
+    for (const token of refreshTokens.values()) {
+      if (token.userId === userId && !token.revokedAt && token.expiresAt.getTime() > now) {
+        valid.add(token.deviceId);
+      }
+    }
+    return valid;
+  }
+
   const repo: AuthRepository = {
     async findUserByEmail(email) {
       for (const user of users.values()) {
@@ -71,23 +82,27 @@ export function createFakeAuthRepository() {
     },
 
     async countDeviceSessions(userId) {
-      let count = 0;
-      for (const session of deviceSessions.values()) {
-        if (session.userId === userId) count += 1;
-      }
-      return count;
+      return getValidDeviceIds(userId).size;
     },
 
     async findDeviceSession(userId, deviceId) {
       return deviceSessions.get(deviceKey(userId, deviceId)) ?? null;
     },
 
-    async upsertDeviceSession(userId, deviceId, deviceLabel) {
+    async upsertDeviceSession(userId, deviceId, info) {
       const key = deviceKey(userId, deviceId);
       const existing = deviceSessions.get(key);
       const session: DeviceSessionRecord = existing
-        ? { ...existing, deviceLabel, lastActiveAt: new Date() }
-        : { id: randomUUID(), userId, deviceId, deviceLabel, lastActiveAt: new Date() };
+        ? { ...existing, deviceLabel: info.label, browser: info.browser, operatingSystem: info.operatingSystem, lastActiveAt: new Date() }
+        : {
+            id: randomUUID(),
+            userId,
+            deviceId,
+            deviceLabel: info.label,
+            browser: info.browser,
+            operatingSystem: info.operatingSystem,
+            lastActiveAt: new Date(),
+          };
       deviceSessions.set(key, session);
       return session;
     },
@@ -104,6 +119,27 @@ export function createFakeAuthRepository() {
     async deleteAllDeviceSessions(userId) {
       for (const [key, session] of deviceSessions.entries()) {
         if (session.userId === userId) deviceSessions.delete(key);
+      }
+    },
+
+    async listActiveDeviceSessions(userId) {
+      const validDeviceIds = getValidDeviceIds(userId);
+      const stale: string[] = [];
+      const active: DeviceSessionRecord[] = [];
+      for (const [key, session] of deviceSessions.entries()) {
+        if (session.userId !== userId) continue;
+        if (validDeviceIds.has(session.deviceId)) active.push(session);
+        else stale.push(key);
+      }
+      for (const key of stale) deviceSessions.delete(key);
+      return active.sort((a, b) => b.lastActiveAt.getTime() - a.lastActiveAt.getTime());
+    },
+
+    async revokeRefreshTokensForDevice(userId, deviceId) {
+      for (const token of refreshTokens.values()) {
+        if (token.userId === userId && token.deviceId === deviceId && !token.revokedAt) {
+          token.revokedAt = new Date();
+        }
       }
     },
 
