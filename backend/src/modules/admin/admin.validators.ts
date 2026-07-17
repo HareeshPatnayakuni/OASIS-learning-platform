@@ -46,6 +46,14 @@ export const courseSearchQuerySchema = searchQuerySchema.extend({
 });
 export type CourseSearchQuery = z.infer<typeof courseSearchQuerySchema>;
 
+// ── Payments (Module 4B) ─────────────────────────────────────────────
+export const paymentSearchQuerySchema = paginationQuerySchema.extend({
+  student: z.string().trim().min(1).optional(),
+  course: z.string().trim().min(1).optional(),
+  status: z.enum(['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED']).optional(),
+});
+export type PaymentSearchQuery = z.infer<typeof paymentSearchQuerySchema>;
+
 // ── Platform announcements ───────────────────────────────────────────
 export const createPlatformAnnouncementBodySchema = z.object({
   title: z.string().trim().min(2).max(200),

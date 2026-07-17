@@ -10,6 +10,7 @@ import {
   createTeacherBodySchema,
   idParamsSchema,
   paginationQuerySchema,
+  paymentSearchQuerySchema,
   searchQuerySchema,
   setActiveBodySchema,
   updatePlatformAnnouncementBodySchema,
@@ -327,6 +328,62 @@ router.delete(
   ...adminOnly,
   validate({ params: idParamsSchema }),
   asyncHandler(controller.deleteCourse),
+);
+
+// ═══════════════════════ Payment oversight (Module 4B) ═════════════════
+
+/**
+ * @openapi
+ * /admin/payments:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List all payments across every student and course (read-only — no editing, deleting, or refunds)
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: student
+ *         schema: { type: string }
+ *         description: Filter by student name (partial, case-insensitive)
+ *       - in: query
+ *         name: course
+ *         schema: { type: string }
+ *         description: Filter by course title (partial, case-insensitive)
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [PENDING, SUCCESS, FAILED, REFUNDED] }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated payment list, newest first }
+ */
+router.get(
+  '/admin/payments',
+  ...adminOnly,
+  validate({ query: paymentSearchQuerySchema }),
+  asyncHandler(controller.listPayments),
+);
+
+/**
+ * @openapi
+ * /admin/payments/{id}:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Detail of any single payment (Admin can view every payment, unlike the student-facing equivalent)
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses:
+ *       200: { description: Payment detail }
+ *       404: { description: Payment not found }
+ */
+router.get(
+  '/admin/payments/:id',
+  ...adminOnly,
+  validate({ params: idParamsSchema }),
+  asyncHandler(controller.getPaymentDetail),
 );
 
 // ═══════════════════════ Platform-wide announcements ═══════════════════

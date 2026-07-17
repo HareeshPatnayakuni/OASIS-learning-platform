@@ -1,4 +1,4 @@
-import type { CourseStatus } from '@prisma/client';
+import type { CourseStatus, PaymentStatus } from '@prisma/client';
 
 /**
  * Module 3C — Admin Dashboard & Platform Management. Deliberately one
@@ -108,6 +108,29 @@ export interface AdminCourseRecord {
   createdAt: Date;
 }
 
+// ── Payment oversight (Module 4B — read-only) ─────────────────────────
+
+export interface AdminPaymentRecord {
+  id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  createdAt: Date;
+  student: { id: string; fullName: string; email: string };
+  course: { id: string; title: string; slug: string };
+}
+
+export interface AdminPaymentDetail extends AdminPaymentRecord {
+  razorpayOrderId: string;
+  razorpayPaymentId: string | null;
+}
+
+export interface AdminPaymentFilters {
+  student?: string;
+  course?: string;
+  status?: PaymentStatus;
+}
+
 // ── Platform announcements ──────────────────────────────────────────
 
 export interface PlatformAnnouncementInput {
@@ -177,6 +200,14 @@ export interface AdminRepository {
   archiveCourse(id: string): Promise<AdminCourseRecord>;
   restoreCourse(id: string): Promise<AdminCourseRecord>;
   softDeleteCourse(id: string): Promise<void>;
+
+  // Payment oversight (Module 4B)
+  listAllPayments(
+    filters: AdminPaymentFilters,
+    page: number,
+    limit: number,
+  ): Promise<{ data: AdminPaymentRecord[]; total: number }>;
+  findPaymentDetail(id: string): Promise<AdminPaymentDetail | null>;
 
   // Platform announcements
   listPlatformAnnouncements(page: number, limit: number): Promise<{ data: AdminAnnouncementSummary[]; total: number }>;

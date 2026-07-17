@@ -7,6 +7,58 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 4B — Payment Management
+**Status:** Complete, pending approval.
+
+Read-only visibility into payments for students and admins. No changes
+to Module 4A's purchase/verify flow, transaction, or idempotency
+guarantees — this module only adds new read queries against the
+existing `Payment` table. No schema changes at all.
+
+### Added
+- **Backend**: `GET /payments/me` and `GET /payments/me/:paymentId`
+  (Student, ownership-scoped at the query level — a student requesting
+  another student's payment gets the same 404 as a nonexistent one).
+  `GET /admin/payments` (search by student name, search by course,
+  filter by status, newest first) and `GET /admin/payments/:id` (Admin).
+  Admin oversight built in `modules/admin/` via a new
+  `AdminPaymentService`, mirroring Module 3C's `AdminCourseService`
+  pattern exactly — no write methods at all, matching "no editing, no
+  deleting, no refunds."
+- **Frontend**: My Payments (table, newest first), Payment Details
+  (read-only field list), and Admin Payment Management (table with two
+  independent search inputs plus a status filter) pages. A "Purchased"
+  badge on the Browse Courses grid for already-enrolled courses — a
+  genuine gap, not just wiring up an existing check: that grid showed a
+  raw price for every course with zero enrollment awareness. New
+  `CourseGrid.tsx` client wrapper fetches the student's own enrollments
+  once (via the existing `GET /enrollments/me`) and cross-references by
+  course ID, since the Browse Courses page is a Server Component with no
+  access to the client-held auth token.
+- **Payment Method and Transaction ID were honestly omitted** from the
+  My Payments list — the brief itself hedged both ("if stored"/"if
+  applicable"), and neither is actually stored (`Payment` has no payment
+  method field; there's no third "transaction ID" concept beyond the two
+  Razorpay IDs already in the schema). Adding a new field to satisfy an
+  optional, hedged requirement would have violated "modify schema only
+  if absolutely necessary."
+- **No nav link was added for the admin payments page** — checked
+  directly first: no existing admin sub-page has one either, they're all
+  URL-only today. A student-side Navbar link *was* added for "My
+  Payments," since that mirrors the existing "Profile" link precedent.
+
+Verified: 268 backend tests (26 new), `tsc`, lint, and build pass on
+both packages. All four new endpoints live-tested for correct RBAC
+(Teacher and Student both `403` from Admin payment routes; Teacher `403`
+and anonymous `401` from Student payment routes) and validation; all
+three new frontend pages return `200` with zero error-boundary
+indicators; confirmed present with zero parser errors in the live
+OpenAPI spec (73 paths, up from 69).
+
+See `docs/14-module-4b-notes.md` for the complete write-up.
+
+---
+
 ## Module 4A — Payments Foundation
 **Status:** Approved and frozen.
 

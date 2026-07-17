@@ -3,6 +3,9 @@ import { prisma } from '../../lib/prisma';
 import type {
   AdminAnnouncementSummary,
   AdminCourseRecord,
+  AdminPaymentDetail,
+  AdminPaymentFilters,
+  AdminPaymentRecord,
   AdminRepository,
   AdminStudentRecord,
   AdminTeacherRecord,
@@ -411,6 +414,83 @@ export class PrismaAdminRepository implements AdminRepository {
 
   async softDeleteCourse(id: string): Promise<void> {
     await prisma.course.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  // ── Payment oversight (Module 4B) ─────────────────────────────
+
+  async listAllPayments(
+    filters: AdminPaymentFilters,
+    page: number,
+    limit: number,
+  ): Promise<{ data: AdminPaymentRecord[]; total: number }> {
+    const where = {
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.student ? { user: { fullName: { contains: filters.student, mode: 'insensitive' as const } } } : {}),
+      ...(filters.course ? { course: { title: { contains: filters.course, mode: 'insensitive' as const } } } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          createdAt: true,
+          user: { select: { id: true, fullName: true, email: true } },
+          course: { select: { id: true, title: true, slug: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.payment.count({ where }),
+    ]);
+
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: (rows as any[]).map((row) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        currency: row.currency,
+        status: row.status,
+        createdAt: row.createdAt,
+        student: row.user,
+        course: row.course,
+      })),
+      total,
+    };
+  }
+
+  async findPaymentDetail(id: string): Promise<AdminPaymentDetail | null> {
+    const row = await prisma.payment.findFirst({
+      where: { id },
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        status: true,
+        createdAt: true,
+        razorpayOrderId: true,
+        razorpayPaymentId: true,
+        user: { select: { id: true, fullName: true, email: true } },
+        course: { select: { id: true, title: true, slug: true } },
+      },
+    });
+    if (!row) return null;
+    const r = row;
+    return {
+      id: r.id,
+      amount: Number(r.amount),
+      currency: r.currency,
+      status: r.status,
+      createdAt: r.createdAt,
+      razorpayOrderId: r.razorpayOrderId,
+      razorpayPaymentId: r.razorpayPaymentId,
+      student: r.user,
+      course: r.course,
+    };
   }
 
   // ── Platform announcements ───────────────────────────────────

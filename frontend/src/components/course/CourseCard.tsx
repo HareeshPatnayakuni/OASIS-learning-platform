@@ -8,10 +8,15 @@ interface CourseCardProps {
   /** When provided, renders a progress bar instead of the price — used on
    * "My Courses" for a course the student is already enrolled in. */
   progressPercent?: number;
+  /** When true (and `progressPercent` isn't provided), shows a
+   * "Purchased" badge instead of the price — used on the Browse Courses
+   * grid, where a course can be already-purchased but not yet opened
+   * from "My Courses" specifically. Module 4B. */
+  isPurchased?: boolean;
   href?: string;
 }
 
-export function CourseCard({ course, progressPercent, href }: CourseCardProps) {
+export function CourseCard({ course, progressPercent, isPurchased, href }: CourseCardProps) {
   const link = href ?? `/courses/${course.slug}`;
 
   return (
@@ -54,6 +59,8 @@ export function CourseCard({ course, progressPercent, href }: CourseCardProps) {
         <div className="mt-auto pt-2">
           {progressPercent !== undefined ? (
             <ProgressBar percent={progressPercent} label="Course progress" />
+          ) : isPurchased ? (
+            <Badge tone="success">Purchased</Badge>
           ) : (
             <div className="flex items-baseline gap-2">
               {course.discountPrice !== null ? (

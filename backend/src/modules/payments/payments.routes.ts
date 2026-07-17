@@ -4,7 +4,7 @@ import { authenticate } from '../../middleware/authenticate';
 import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { courseIdParamsSchema, verifyPaymentBodySchema } from './payments.validators';
+import { courseIdParamsSchema, paginationQuerySchema, paymentIdParamsSchema, verifyPaymentBodySchema } from './payments.validators';
 
 const router = Router();
 const controller = new PaymentController();
@@ -75,6 +75,53 @@ router.post(
   ...studentOnly,
   validate({ body: verifyPaymentBodySchema }),
   asyncHandler(controller.verifyPayment),
+);
+
+/**
+ * @openapi
+ * /payments/me:
+ *   get:
+ *     tags: [Payments]
+ *     summary: The requesting student's own payments, newest first
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200: { description: Paginated payment list }
+ */
+router.get(
+  '/payments/me',
+  ...studentOnly,
+  validate({ query: paginationQuerySchema }),
+  asyncHandler(controller.listMyPayments),
+);
+
+/**
+ * @openapi
+ * /payments/me/{paymentId}:
+ *   get:
+ *     tags: [Payments]
+ *     summary: Detail of one of the requesting student's own payments
+ *     description: >
+ *       Read-only. Returns 404 whether the payment doesn't exist or
+ *       belongs to a different student — a student probing other
+ *       payment IDs learns nothing either way.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: paymentId, required: true, schema: { type: string, format: uuid } }]
+ *     responses:
+ *       200: { description: Payment detail }
+ *       404: { description: Payment not found (or not this student's) }
+ */
+router.get(
+  '/payments/me/:paymentId',
+  ...studentOnly,
+  validate({ params: paymentIdParamsSchema }),
+  asyncHandler(controller.getPaymentDetail),
 );
 
 export { router as paymentsRouter };

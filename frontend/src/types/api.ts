@@ -125,6 +125,37 @@ export type VerifyPaymentResult =
   | { type: 'SUCCESS'; enrollmentId: string }
   | { type: 'ALREADY_PROCESSED'; enrollmentId: string };
 
+// ── Payment Management (Module 4B) ───────────────────────────────────
+
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+
+export interface PaymentListItem {
+  id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  createdAt: string;
+  razorpayPaymentId: string | null;
+  course: { id: string; title: string; slug: string };
+}
+
+/** Superset of `PaymentListItem` — also includes the Razorpay Order ID,
+ * which the list view doesn't show (matching the brief's own field
+ * lists for each page). */
+export interface PaymentDetail extends PaymentListItem {
+  razorpayOrderId: string;
+}
+
+export interface AdminPaymentListItem {
+  id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  createdAt: string;
+  student: { id: string; fullName: string; email: string };
+  course: { id: string; title: string; slug: string };
+}
+
 
 // ── Content (signed URLs / progress) ────────────────────────────────
 

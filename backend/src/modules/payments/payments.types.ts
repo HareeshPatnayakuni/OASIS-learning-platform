@@ -61,6 +61,25 @@ export type VerifyResult =
   | { type: 'SUCCESS'; enrollmentId: string }
   | { type: 'ALREADY_PROCESSED'; enrollmentId: string };
 
+// ── Module 4B — Payment Management (read-only) ──────────────────────
+
+export interface PaymentListItem {
+  id: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  createdAt: Date;
+  razorpayPaymentId: string | null;
+  course: { id: string; title: string; slug: string };
+}
+
+/** Superset of `PaymentListItem` — the detail view additionally shows
+ * the Razorpay order ID, which the list view (matching the brief's own
+ * field list) doesn't. */
+export interface PaymentDetail extends PaymentListItem {
+  razorpayOrderId: string;
+}
+
 export interface PaymentRepository {
   findCourseForPurchase(courseId: string): Promise<PurchasableCourse | null>;
   createPendingPayment(input: {
@@ -88,4 +107,16 @@ export interface PaymentRepository {
     razorpayPaymentId: string,
     razorpaySignature: string,
   ): Promise<{ enrollmentId: string }>;
+  /** Newest first, per the brief. Scoped to `studentId` at the query
+   * level (not filtered after the fact) — a student can only ever see
+   * rows that are already theirs. */
+  listPaymentsForStudent(
+    studentId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: PaymentListItem[]; total: number }>;
+  /** Returns `null` if the payment doesn't exist *or* doesn't belong to
+   * `studentId` — same 404 either way, so a student probing other
+   * payment IDs learns nothing about whether they exist. */
+  findPaymentDetailForStudent(paymentId: string, studentId: string): Promise<PaymentDetail | null>;
 }

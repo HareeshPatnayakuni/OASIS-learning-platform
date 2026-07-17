@@ -3,6 +3,7 @@ import type { CourseStatus } from '@prisma/client';
 import type {
   AdminAnnouncementSummary,
   AdminCourseRecord,
+  AdminPaymentRecord,
   AdminRepository,
   AdminStudentRecord,
   AdminTeacherRecord,
@@ -19,6 +20,7 @@ export function createFakeAdminRepository(seed: {
   students?: AdminStudentRecord[];
   courses?: AdminCourseRecord[];
   announcements?: AdminAnnouncementSummary[];
+  payments?: AdminPaymentRecord[];
   settings?: PlatformSettings;
   activeSessionCount?: number;
 } = {}) {
@@ -26,6 +28,7 @@ export function createFakeAdminRepository(seed: {
   const students = new Map((seed.students ?? []).map((s) => [s.id, s]));
   const courses = new Map((seed.courses ?? []).map((c) => [c.id, c]));
   const announcements = new Map((seed.announcements ?? []).map((a) => [a.id, a]));
+  const payments = new Map((seed.payments ?? []).map((p) => [p.id, p]));
   let settings: PlatformSettings =
     seed.settings ??
     ({
@@ -145,6 +148,26 @@ export function createFakeAdminRepository(seed: {
     },
     async softDeleteCourse(id) {
       courses.delete(id);
+    },
+
+    async listAllPayments(filters, page, limit) {
+      let all = [...payments.values()];
+      if (filters.status) all = all.filter((p) => p.status === filters.status);
+      if (filters.student) {
+        const q = filters.student.toLowerCase();
+        all = all.filter((p) => p.student.fullName.toLowerCase().includes(q));
+      }
+      if (filters.course) {
+        const q = filters.course.toLowerCase();
+        all = all.filter((p) => p.course.title.toLowerCase().includes(q));
+      }
+      all.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return { data: all.slice((page - 1) * limit, page * limit), total: all.length };
+    },
+    async findPaymentDetail(id) {
+      const payment = payments.get(id);
+      if (!payment) return null;
+      return { ...payment, razorpayOrderId: `order_${id}`, razorpayPaymentId: `pay_${id}` };
     },
 
     async listPlatformAnnouncements(page, limit) {

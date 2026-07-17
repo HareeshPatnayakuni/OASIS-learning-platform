@@ -54,7 +54,7 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Payments',
         description:
-          'Course purchase (free-instant-enroll or Razorpay checkout) and server-side payment verification (Student only)',
+          'Course purchase (free-instant-enroll or Razorpay checkout), server-side payment verification, and read-only payment history/detail (Student only — the equivalent Admin oversight endpoints are tagged Admin)',
       },
       { name: 'Users', description: 'Profile, Learning Streak, Continue Watching, Announcements' },
       { name: 'Search', description: 'Search across courses, chapters, and modules' },

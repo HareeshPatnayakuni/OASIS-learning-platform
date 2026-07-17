@@ -91,6 +91,35 @@ function createFakeRepos(seed: {
         if (p.id === paymentId) payments.set(key, { ...p, status: 'FAILED' });
       }
     },
+    async listPaymentsForStudent(studentId, page, limit) {
+      const mine = [...payments.values()]
+        .filter((p) => p.userId === studentId)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const data = mine.slice((page - 1) * limit, page * limit).map((p) => ({
+        id: p.id,
+        amount: p.amount,
+        currency: p.currency,
+        status: p.status,
+        createdAt: p.createdAt,
+        razorpayPaymentId: p.razorpayPaymentId,
+        course: { id: p.courseId, title: 'CBSE Class 8 Mathematics', slug: 'cbse-class-8-mathematics' },
+      }));
+      return { data, total: mine.length };
+    },
+    async findPaymentDetailForStudent(paymentId, studentId) {
+      const payment = [...payments.values()].find((p) => p.id === paymentId && p.userId === studentId);
+      if (!payment) return null;
+      return {
+        id: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        createdAt: payment.createdAt,
+        razorpayOrderId: payment.razorpayOrderId,
+        razorpayPaymentId: payment.razorpayPaymentId,
+        course: { id: payment.courseId, title: 'CBSE Class 8 Mathematics', slug: 'cbse-class-8-mathematics' },
+      };
+    },
   };
 
   const enrollmentRepo: EnrollmentRepository = {
@@ -337,5 +366,92 @@ describe('PaymentService.verifyPayment', () => {
 
     expect(secondResult.type).toBe('ALREADY_PROCESSED');
     expect(enrollments.size).toBe(1);
+  });
+});
+
+describe('PaymentService.listMyPayments', () => {
+  it('returns only the requesting student\'s own payments, newest first', async () => {
+    const older = buildPayment({
+      id: 'payment-1',
+      razorpayOrderId: 'order_1',
+      createdAt: new Date('2026-01-01'),
+    });
+    const newer = buildPayment({
+      id: 'payment-2',
+      razorpayOrderId: 'order_2',
+      createdAt: new Date('2026-02-01'),
+    });
+    const someoneElses = buildPayment({
+      id: 'payment-3',
+      userId: 'other-student',
+      razorpayOrderId: 'order_3',
+      createdAt: new Date('2026-03-01'),
+    });
+    const { paymentRepo, enrollmentRepo } = createFakeRepos({
+      payments: new Map([
+        ['order_1', older],
+        ['order_2', newer],
+        ['order_3', someoneElses],
+      ]),
+    });
+    const service = new PaymentService(paymentRepo, enrollmentRepo);
+
+    const result = await service.listMyPayments(STUDENT_ID, 1, 20);
+
+    expect(result.data).toHaveLength(2);
+    expect(result.data[0]?.id).toBe('payment-2');
+    expect(result.data[1]?.id).toBe('payment-1');
+    expect(result.meta).toEqual({ page: 1, limit: 20, total: 2 });
+  });
+
+  it('paginates correctly', async () => {
+    const { paymentRepo, enrollmentRepo } = createFakeRepos({
+      payments: new Map([
+        ['order_1', buildPayment({ id: 'payment-1', razorpayOrderId: 'order_1' })],
+        ['order_2', buildPayment({ id: 'payment-2', razorpayOrderId: 'order_2' })],
+      ]),
+    });
+    const service = new PaymentService(paymentRepo, enrollmentRepo);
+
+    const result = await service.listMyPayments(STUDENT_ID, 1, 1);
+
+    expect(result.data).toHaveLength(1);
+    expect(result.meta.total).toBe(2);
+  });
+});
+
+describe('PaymentService.getMyPaymentDetail', () => {
+  it("returns the payment's detail when it belongs to the requesting student", async () => {
+    const { paymentRepo, enrollmentRepo } = createFakeRepos({
+      payments: new Map([['order_abc123', buildPayment({ id: 'payment-1' })]]),
+    });
+    const service = new PaymentService(paymentRepo, enrollmentRepo);
+
+    const detail = await service.getMyPaymentDetail(STUDENT_ID, 'payment-1');
+
+    expect(detail.id).toBe('payment-1');
+    expect(detail.razorpayOrderId).toBe('order_abc123');
+  });
+
+  it("404s for a payment that belongs to a different student — same as if it didn't exist", async () => {
+    const { paymentRepo, enrollmentRepo } = createFakeRepos({
+      payments: new Map([['order_abc123', buildPayment({ id: 'payment-1', userId: 'other-student' })]]),
+    });
+    const service = new PaymentService(paymentRepo, enrollmentRepo);
+
+    await expect(service.getMyPaymentDetail(STUDENT_ID, 'payment-1')).rejects.toMatchObject({
+      code: 'PAYMENT_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+
+  it('404s for a payment that does not exist at all', async () => {
+    const { paymentRepo, enrollmentRepo } = createFakeRepos({ payments: new Map() });
+    const service = new PaymentService(paymentRepo, enrollmentRepo);
+
+    await expect(service.getMyPaymentDetail(STUDENT_ID, 'nope')).rejects.toMatchObject({
+      code: 'PAYMENT_NOT_FOUND',
+      statusCode: 404,
+    });
   });
 });

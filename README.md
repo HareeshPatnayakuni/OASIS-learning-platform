@@ -152,7 +152,7 @@ architectural summary every future module should be checked against.
 | [`docs/10-module-3c-notes.md`](docs/10-module-3c-notes.md) | Module 3C design decisions and what was actually built/tested |
 | [`docs/11-module-3d-notes.md`](docs/11-module-3d-notes.md) | Module 3D branding decisions and what was actually changed |
 | [`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) | Module 4A payments design decisions and what was actually built/tested |
-| [`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) | Module 4A payments design decisions and what was actually built/tested |
+| [`docs/14-module-4b-notes.md`](docs/14-module-4b-notes.md) | Module 4B payment management design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -336,4 +336,9 @@ server-verified Razorpay Checkout flow before any Enrollment is created.
 A final review before freeze found and fixed one genuine data-consistency
 gap (payment success + enrollment creation are now one atomic
 transaction, not two separate writes). See `docs/13-module-4a-notes.md`.
-Module 4B is next.
+
+**Module 4B (Payment Management) is complete and pending your approval.**
+Read-only payment visibility: My Payments and Payment Details for
+students, a searchable/filterable Payment Management page for Admin, and
+a "Purchased" badge on the Browse Courses grid. No changes to Module
+4A's purchase/verify flow. See `docs/14-module-4b-notes.md`.

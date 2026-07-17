@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { apiRequest, apiRequestPaginated } from '@/lib/api-client';
 import { CourseFilterBar } from '@/components/course/CourseFilterBar';
-import { CourseCard } from '@/components/course/CourseCard';
+import { CourseGrid } from '@/components/course/CourseGrid';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import type { CatalogRef, ClassGrade, CourseListItem } from '@/types/api';
 
@@ -66,11 +66,7 @@ export default async function CoursesPage({ searchParams }: CoursesPageProps) {
           description="Try a different Board, Class, Subject, or search term."
         />
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </div>
+        <CourseGrid courses={courses} />
       )}
     </main>
   );

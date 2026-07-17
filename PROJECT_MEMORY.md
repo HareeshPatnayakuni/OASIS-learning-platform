@@ -6,9 +6,9 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: Module 4A (Payments
-Foundation), frozen after a final-review fix (see `CHANGELOG.md`).
-Modules 1, 2, 3A, 3B, 3C, 3D, and 4A are all frozen.
+Updated after every approved module. Last updated: Module 4B (Payment
+Management), complete and pending approval, following Module 4A (see
+`CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, 3D, and 4A are frozen.
 
 ---
 
@@ -29,6 +29,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 3C — Admin Dashboard & Platform Management | ✅ Frozen |
 | 3D — Branding & UI Identity | ✅ Frozen |
 | 4A — Payments Foundation | ✅ Frozen |
+| 4B — Payment Management | 🚧 Complete, pending approval |
 
 **Tagged `v0.1.0` — Foundation Complete** (`backend/package.json` and
 `frontend/package.json` both set to `0.1.0`). This is the first version
@@ -541,6 +542,28 @@ rather than making its credentials hard-required at startup.
   screen-reader semantics. Add `event.stopPropagation()` inside the
   inner control's own handler so activating it doesn't also fire the
   row's handler.
+- **A Server Component page that needs to know per-user state it can't
+  read server-side (auth lives in localStorage, not a cookie — see the
+  note above) gets a thin Client Component wrapper for just that piece,
+  not a full page conversion.** `components/course/CourseGrid.tsx`
+  (Module 4B) is the template: the Browse Courses page stays a Server
+  Component doing its normal server-side fetch of the public course
+  list; `CourseGrid` is the one small client boundary that
+  additionally fetches the *requesting student's own* enrollments
+  (`GET /enrollments/me`, already existing) and cross-references by ID
+  to show a "Purchased" badge. Anonymous visitors and non-students see
+  the exact same page as before, since the wrapper does nothing extra
+  for them.
+- **No admin sub-page (courses, teachers, students, settings,
+  announcements, payments) has an in-app navigation link anywhere —
+  confirmed by checking directly, not assumed.** They're all reachable
+  only by direct URL today. This was true before Module 4B and Module
+  4B didn't change it — don't add a nav link for one admin page without
+  also addressing the others, since doing it for just one would be
+  inventing a new, inconsistent pattern rather than following an
+  existing one. (Student-facing pages are different: the Navbar already
+  has a real "Profile" link precedent, which Module 4B's "My Payments"
+  link correctly followed.)
 
 ## 10. Coding standards
 

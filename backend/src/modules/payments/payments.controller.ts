@@ -19,4 +19,16 @@ export class PaymentController {
     const result = await this.service.verifyPayment(req.user!.id, body);
     res.status(200).json({ data: result });
   };
+
+  listMyPayments = async (req: Request, res: Response): Promise<void> => {
+    const { page = 1, limit = 20 } = req.query as unknown as { page?: number; limit?: number };
+    const result = await this.service.listMyPayments(req.user!.id, page, limit);
+    res.status(200).json(result);
+  };
+
+  getPaymentDetail = async (req: Request, res: Response): Promise<void> => {
+    const { paymentId } = req.params as { paymentId: string };
+    const payment = await this.service.getMyPaymentDetail(req.user!.id, paymentId);
+    res.status(200).json({ data: payment });
+  };
 }

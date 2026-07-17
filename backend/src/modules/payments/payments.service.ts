@@ -1,7 +1,14 @@
 import { ApiError } from '../../utils/ApiError';
 import { createOrder, verifyCheckoutSignature } from '../../lib/razorpay';
 import type { EnrollmentRepository } from '../enrollments/enrollments.types';
-import type { PaymentRepository, PurchaseResult, VerifyPaymentInput, VerifyResult } from './payments.types';
+import type {
+  PaymentDetail,
+  PaymentListItem,
+  PaymentRepository,
+  PurchaseResult,
+  VerifyPaymentInput,
+  VerifyResult,
+} from './payments.types';
 
 export class PaymentService {
   constructor(
@@ -109,5 +116,26 @@ export class PaymentService {
     );
 
     return { type: 'SUCCESS', enrollmentId: result.enrollmentId };
+  }
+
+  /** Newest first, scoped to the requesting student at the repository
+   * query level — never fetched broadly and filtered in memory. */
+  async listMyPayments(
+    studentId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: PaymentListItem[]; meta: { page: number; limit: number; total: number } }> {
+    const { data, total } = await this.paymentRepo.listPaymentsForStudent(studentId, page, limit);
+    return { data, meta: { page, limit, total } };
+  }
+
+  async getMyPaymentDetail(studentId: string, paymentId: string): Promise<PaymentDetail> {
+    const payment = await this.paymentRepo.findPaymentDetailForStudent(paymentId, studentId);
+    // Same 404 whether the payment doesn't exist or belongs to someone
+    // else — a student probing other IDs learns nothing either way.
+    if (!payment) {
+      throw ApiError.notFound('PAYMENT_NOT_FOUND', 'Payment not found');
+    }
+    return payment;
   }
 }

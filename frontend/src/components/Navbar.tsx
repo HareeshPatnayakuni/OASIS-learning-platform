@@ -72,12 +72,20 @@ export function Navbar() {
                 Dashboard
               </Link>
               {user?.role === 'STUDENT' ? (
-                <Link
-                  href="/student/profile"
-                  className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
-                >
-                  {user?.fullName.split(' ')[0]}
-                </Link>
+                <>
+                  <Link
+                    href="/student/payments"
+                    className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
+                  >
+                    My Payments
+                  </Link>
+                  <Link
+                    href="/student/profile"
+                    className="hidden text-sm font-medium text-neutral-600 hover:text-brand-600 sm:inline"
+                  >
+                    {user?.fullName.split(' ')[0]}
+                  </Link>
+                </>
               ) : (
                 <span className="hidden text-sm font-medium text-neutral-500 sm:inline">
                   {user?.fullName.split(' ')[0]}

@@ -1,6 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
-import type { PaymentRecord, PaymentRepository, PurchasableCourse } from './payments.types';
+import type {
+  PaymentDetail,
+  PaymentListItem,
+  PaymentRecord,
+  PaymentRepository,
+  PurchasableCourse,
+} from './payments.types';
 
 const paymentSelect = {
   id: true,
@@ -107,5 +113,72 @@ export class PrismaPaymentRepository implements PaymentRepository {
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     return { enrollmentId: (enrollment as { id: string }).id };
+  }
+
+  async listPaymentsForStudent(
+    studentId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: PaymentListItem[]; total: number }> {
+    const where = { userId: studentId };
+    const [rows, total] = await Promise.all([
+      prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          status: true,
+          createdAt: true,
+          razorpayPaymentId: true,
+          course: { select: { id: true, title: true, slug: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.payment.count({ where }),
+    ]);
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: (rows as any[]).map((row) => ({
+        id: row.id,
+        amount: Number(row.amount),
+        currency: row.currency,
+        status: row.status,
+        createdAt: row.createdAt,
+        razorpayPaymentId: row.razorpayPaymentId,
+        course: row.course,
+      })),
+      total,
+    };
+  }
+
+  async findPaymentDetailForStudent(paymentId: string, studentId: string): Promise<PaymentDetail | null> {
+    const row = await prisma.payment.findFirst({
+      where: { id: paymentId, userId: studentId },
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        status: true,
+        createdAt: true,
+        razorpayOrderId: true,
+        razorpayPaymentId: true,
+        course: { select: { id: true, title: true, slug: true } },
+      },
+    });
+    if (!row) return null;
+    const r = row;
+    return {
+      id: r.id,
+      amount: Number(r.amount),
+      currency: r.currency,
+      status: r.status,
+      createdAt: r.createdAt,
+      razorpayOrderId: r.razorpayOrderId,
+      razorpayPaymentId: r.razorpayPaymentId,
+      course: r.course,
+    };
   }
 }

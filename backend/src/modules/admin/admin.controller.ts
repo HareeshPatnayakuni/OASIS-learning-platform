@@ -6,10 +6,12 @@ import { AdminStudentService } from './students.service';
 import { AdminCourseService } from './courses.service';
 import { AdminAnnouncementService } from './announcements.service';
 import { AdminSettingsService } from './settings.service';
+import { AdminPaymentService } from './payments.service';
 import type {
   CourseSearchQuery,
   CreatePlatformAnnouncementBody,
   CreateTeacherBody,
+  PaymentSearchQuery,
   SetActiveBody,
   UpdatePlatformAnnouncementBody,
   UpdateSettingsBody,
@@ -25,6 +27,7 @@ export class AdminController {
   private readonly courses = new AdminCourseService(repo);
   private readonly announcements = new AdminAnnouncementService(repo);
   private readonly settings = new AdminSettingsService(repo);
+  private readonly payments = new AdminPaymentService(repo);
 
   // ── Dashboard / analytics ──────────────────────────────────────
   getDashboard = async (_req: Request, res: Response): Promise<void> => {
@@ -111,6 +114,20 @@ export class AdminController {
     const { id } = req.params as { id: string };
     await this.courses.deleteCourse(id);
     res.status(204).send();
+  };
+
+  // ── Payment oversight (Module 4B) ──────────────────────────────
+
+  listPayments = async (req: Request, res: Response): Promise<void> => {
+    const { student, course, status, page = 1, limit = 20 } = req.query as unknown as PaymentSearchQuery;
+    const result = await this.payments.listPayments({ student, course, status }, page, limit);
+    res.status(200).json(result);
+  };
+
+  getPaymentDetail = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params as { id: string };
+    const payment = await this.payments.getPaymentDetail(id);
+    res.status(200).json({ data: payment });
   };
 
   // ── Platform announcements ─────────────────────────────────────
