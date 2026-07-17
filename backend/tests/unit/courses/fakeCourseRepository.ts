@@ -100,6 +100,7 @@ export function buildTestCourse(overrides: Partial<CourseWithSyllabus> = {}): Co
               },
             ],
             notes: [{ id: 'note-1', title: 'Chapter 1 Notes', order: 1 }],
+            quizzes: [],
           },
         ],
       },

@@ -6,9 +6,9 @@ that's been made and frozen — the full reasoning behind each lives in
 `docs/`, but this file is what should be checked against before writing new
 code, so nothing gets silently redesigned.
 
-Updated after every approved module. Last updated: Module 5 (Device
-Management), frozen after a focused pre-freeze review (see
-`CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, 3D, 4A, 4B, and 5 are all
+Updated after every approved module. Last updated: Module 6 (Student
+Quiz Attempt Flow), complete and pending approval, following Module 5
+(see `CHANGELOG.md`). Modules 1, 2, 3A, 3B, 3C, 3D, 4A, 4B, and 5 are
 frozen.
 
 ---
@@ -32,6 +32,7 @@ Board), built for a real institute's public launch. Full requirements:
 | 4A — Payments Foundation | ✅ Frozen |
 | 4B — Payment Management | ✅ Frozen |
 | 5 — Device Management | ✅ Frozen |
+| 6 — Student Quiz Attempt Flow | 🚧 Complete, pending approval |
 
 **Tagged `v0.1.0` — Foundation Complete** (`backend/package.json` and
 `frontend/package.json` both set to `0.1.0`). This is the first version
@@ -193,7 +194,13 @@ rather than making its credentials hard-required at startup.
   changes.
 - `CourseStatus` (DRAFT/PUBLISHED/ARCHIVED) and `LectureStatus`
   (DRAFT/PUBLISHED/HIDDEN) are separate enums — a course can be published
-  while an individual lecture is still draft/hidden.
+  while an individual lecture is still draft/hidden. **Chapter,
+  ContentModule, Note, and Quiz have no status field of their own at
+  all** (`docs/03-database-design.md §2.3`) — their visibility is
+  inherited entirely from the parent Course's status; check the
+  Course's own status/deletedAt directly for any of these, not a
+  nonexistent field on the item itself. Confirmed directly while
+  building Module 6's quiz-access check, which needed exactly this.
 - Slugs: `Course.slug` globally unique; `Chapter.slug` unique per-course
   (chapter titles legitimately repeat across courses).
 - Media (images) and video/notes are architecturally different: images go
@@ -376,10 +383,13 @@ rather than making its credentials hard-required at startup.
   announcements. A demo teacher account exists (`database/seed.ts`) and
   can now actually use a real dashboard, not just serve as an FK target
   for seeded courses.
-- **Quizzes can now be authored** (Module 3B: create/edit/delete, with
-  question/option validation) **but not yet attempted.** There's no
-  student-facing "take this quiz" flow — `QuizAttempt` exists in the
-  schema for when that's built, but nothing writes to it yet.
+- **Quizzes can be both authored and attempted.** Module 3B: create/edit/
+  delete with question/option validation (teacher). Module 6: the
+  student-facing take-quiz/submit/view-attempt flow, reachable from the
+  Course Player's syllabus. Multiple attempts are allowed (no unique
+  constraint on `QuizAttempt`'s `[quizId, studentId]` — see
+  `docs/16-module-6-notes.md §2` for the full reasoning); "my attempt"
+  is always the most recent one.
 - **Notifications: the Announcement fan-out is now built** (Module 3B —
   posting an announcement creates a `Notification` row per enrolled
   student, per the original design in `docs/02-architecture.md §6.1`).

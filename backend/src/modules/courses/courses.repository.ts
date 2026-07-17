@@ -123,6 +123,10 @@ export class PrismaCourseRepository implements CourseRepository {
                   orderBy: { order: 'asc' },
                   select: { id: true, title: true, order: true },
                 },
+                quizzes: {
+                  where: { deletedAt: null },
+                  select: { id: true, title: true },
+                },
               },
             },
           },
@@ -159,6 +163,11 @@ export class PrismaCourseRepository implements CourseRepository {
             id: note.id,
             title: note.title,
             order: note.order,
+          })),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          quizzes: mod.quizzes.map((quiz: any) => ({
+            id: quiz.id,
+            title: quiz.title,
           })),
         })),
       })),

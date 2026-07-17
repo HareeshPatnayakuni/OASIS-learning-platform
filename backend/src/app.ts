@@ -21,6 +21,7 @@ import { usersRouter } from './modules/users/users.routes';
 import { searchRouter } from './modules/search/search.routes';
 import { mediaRouter } from './modules/media/media.routes';
 import { quizzesRouter } from './modules/quizzes/quizzes.routes';
+import { quizAttemptsRouter } from './modules/quizzes/quiz-attempts.routes';
 import { teacherAnnouncementsRouter } from './modules/announcements/announcements.routes';
 import { adminRouter } from './modules/admin/admin.routes';
 import { paymentsRouter } from './modules/payments/payments.routes';
@@ -106,6 +107,7 @@ export function createApp(): Express {
   app.use('/api/v1', contentRouter); // GET/PUT /lectures/:id/*, GET /notes/:id/*
   app.use('/api/v1', contentManagementRouter); // POST/PATCH/DELETE chapters, modules, lectures, notes
   app.use('/api/v1', quizzesRouter);
+  app.use('/api/v1', quizAttemptsRouter);
   app.use('/api/v1', teacherAnnouncementsRouter);
   app.use('/api/v1', adminRouter);
   app.use('/api/v1', paymentsRouter);

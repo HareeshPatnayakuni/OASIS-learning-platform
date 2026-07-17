@@ -237,6 +237,7 @@ export default function CoursePlayerPage() {
           <CourseSyllabus
             chapters={course.chapters}
             isEnrolled={course.isEnrolled}
+            courseSlug={slug}
             activeLectureId={activeLectureId ?? undefined}
             onSelectLecture={setActiveLectureId}
           />

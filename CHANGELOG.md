@@ -7,6 +7,63 @@ summary and `docs/` for the full detail behind any entry here.
 
 ---
 
+## Module 6 — Student Quiz Attempt Flow
+**Status:** Complete, pending approval.
+
+Completes quiz functionality Module 3B only built the teacher-authoring
+half of: students can now take a quiz, get a server-scored result, and
+view their most recent attempt. Zero schema changes.
+
+### Key finding, confirmed before writing any code
+`QuizAttempt` has `@@index([quizId, studentId])` but no unique
+constraint, and its own schema comment calls it an "immutable historical
+record" — the schema was never built to enforce a single attempt.
+**Attempt policy chosen: multiple attempts allowed**, each submission a
+new row, "my attempt" returns the most recent. The simplest behavior
+consistent with the existing schema, not invented from scratch.
+
+### Added
+- **Backend**: new `modules/quizzes/quiz-attempts.*` (student-facing,
+  alongside the existing teacher-facing `quizzes.*`) —
+  `GET /quizzes/:quizId/attempt` (quiz with no correct answers exposed),
+  `POST /quizzes/:quizId/attempt` (server-scored submission — the score
+  is always computed from the real answer key, never trusted from the
+  request, which has no score field to send one in), and
+  `GET /quizzes/:quizId/my-attempt` (most recent attempt, or null).
+  Reuses `QuizRepository.findQuizById` (the teacher module's existing
+  read path) directly for quiz structure and
+  `ContentRepository.isStudentEnrolled` (Module 3A/4A's existing
+  enrollment check) directly for access — no duplicated logic.
+- **Quizzes added to the course syllabus** (`courses.repository.ts`),
+  inheriting the existing course-status check that query already
+  performs — Quiz has no status field of its own (confirmed in
+  `docs/03-database-design.md §2.3`), so this was the correct and only
+  way to gate its visibility.
+- **Frontend**: a quiz is now reachable directly from the existing
+  Course Player sidebar (`CourseSyllabus`, one new rendering branch
+  alongside notes) — no separate quiz dashboard. New Take Quiz/Result
+  page handles the form, a fresh submission's per-question correctness,
+  and a previous attempt's aggregate score, with a Retake option.
+
+### Security
+Every submitted `questionId`/`optionId` is validated against the actual
+quiz's structure before scoring, rejecting anything that doesn't belong
+— the literal enforcement of "students cannot submit answers for another
+quiz." Correct answers are compile-time-absent from the pre-submission
+response type, not just omitted by convention. A student's "my attempt"
+query is scoped by `studentId` at the database query itself, never
+filtered after a broader fetch.
+
+Verified: 291 backend tests (14 new), `tsc`, lint, and build pass on
+both packages. All three new endpoints live-tested for correct RBAC
+(Teacher `403`) with zero collision against the existing teacher
+`GET /quizzes/:id` endpoint, and confirmed present with zero parser
+errors in the live OpenAPI spec (77 paths, up from 75).
+
+See `docs/16-module-6-notes.md` for the complete write-up.
+
+---
+
 ## Module 5 — Device Management
 **Status:** Approved and frozen.
 

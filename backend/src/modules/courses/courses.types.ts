@@ -52,12 +52,25 @@ export interface NoteSummary {
   order: number;
 }
 
+/** Quiz has no `order` column of its own (per schema.prisma) and, per
+ * docs/03-database-design.md §2.3, no status field either — visibility
+ * is inherited entirely from the parent Course's status, already
+ * enforced by this same query's outer `where`. Deliberately minimal:
+ * just enough for the Course Player to show "Quiz: <title>" and link to
+ * it — the actual questions/options are fetched separately, only once
+ * the student opens the quiz (Module 6). */
+export interface QuizSummary {
+  id: string;
+  title: string;
+}
+
 export interface ModuleWithContent {
   id: string;
   title: string;
   order: number;
   lectures: LectureSummary[];
   notes: NoteSummary[];
+  quizzes: QuizSummary[];
 }
 
 export interface ChapterWithModules {

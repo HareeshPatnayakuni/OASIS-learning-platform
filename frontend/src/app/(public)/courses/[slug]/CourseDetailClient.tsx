@@ -57,7 +57,7 @@ export function CourseDetailClient({ initialCourse }: { initialCourse: CourseDet
           <p className="mb-8 text-neutral-700">{course.description}</p>
 
           <h2 className="mb-3 text-lg font-semibold text-neutral-900">Syllabus</h2>
-          <CourseSyllabus chapters={course.chapters} isEnrolled={course.isEnrolled} />
+          <CourseSyllabus chapters={course.chapters} isEnrolled={course.isEnrolled} courseSlug={course.slug} />
         </div>
 
         <aside className="lg:col-span-1">

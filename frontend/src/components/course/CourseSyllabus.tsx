@@ -1,12 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import type { ChapterWithModules } from '@/types/api';
 
 interface CourseSyllabusProps {
   chapters: ChapterWithModules[];
   isEnrolled: boolean;
+  /** Needed to link to a quiz's take-quiz page
+   * (/student/courses/{courseSlug}/quiz/{quizId}) — Module 6. */
+  courseSlug: string;
   /** When provided, lectures become clickable and this is called with the
    * lecture ID — used by the Course Player. Omit for the read-only
    * Course Details preview. */
@@ -23,6 +27,7 @@ function formatDuration(durationSec: number | null): string {
 export function CourseSyllabus({
   chapters,
   isEnrolled,
+  courseSlug,
   onSelectLecture,
   activeLectureId,
 }: CourseSyllabusProps) {
@@ -121,6 +126,25 @@ export function CourseSyllabus({
                           {!isEnrolled ? <Badge tone="locked">Locked</Badge> : null}
                         </li>
                       ))}
+                      {mod.quizzes.map((quiz) =>
+                        isEnrolled ? (
+                          <li key={quiz.id}>
+                            <Link
+                              href={`/student/courses/${courseSlug}/quiz/${quiz.id}`}
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-neutral-700 transition-colors hover:bg-white"
+                            >
+                              <QuizIcon />
+                              <span className="flex-1 truncate">{quiz.title}</span>
+                            </Link>
+                          </li>
+                        ) : (
+                          <li key={quiz.id} className="flex items-center gap-2 px-2 py-1.5 text-sm text-neutral-400">
+                            <LockIcon />
+                            <span className="flex-1 truncate">{quiz.title}</span>
+                            <Badge tone="locked">Locked</Badge>
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </div>
                 ))}
@@ -162,6 +186,14 @@ function NoteIcon() {
   return (
     <svg className="h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function QuizIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   );
 }

@@ -86,12 +86,18 @@ export interface NoteSummary {
   order: number;
 }
 
+export interface QuizSummary {
+  id: string;
+  title: string;
+}
+
 export interface ModuleWithContent {
   id: string;
   title: string;
   order: number;
   lectures: LectureSummary[];
   notes: NoteSummary[];
+  quizzes: QuizSummary[];
 }
 
 export interface ChapterWithModules {
@@ -564,4 +570,56 @@ export interface PlatformSettings {
   logoUrl: string | null;
   faviconUrl: string | null;
   updatedAt: string;
+}
+
+// ── Quiz Attempts (Module 6) ─────────────────────────────────────────
+
+export interface OptionForAttempt {
+  id: string;
+  text: string;
+}
+
+export interface QuestionForAttempt {
+  id: string;
+  text: string;
+  order: number;
+  options: OptionForAttempt[];
+}
+
+export interface QuizForAttempt {
+  id: string;
+  title: string;
+  passPercent: number;
+  questions: QuestionForAttempt[];
+}
+
+export interface SubmittedAnswer {
+  questionId: string;
+  optionId: string;
+}
+
+export interface QuestionResult {
+  questionId: string;
+  selectedOptionId: string | null;
+  correctOptionId: string;
+  isCorrect: boolean;
+}
+
+export interface QuizAttemptResult {
+  id: string;
+  score: number;
+  totalMarks: number;
+  passPercent: number;
+  passed: boolean;
+  attemptedAt: string;
+  questionResults: QuestionResult[];
+}
+
+/** What a *previous* attempt looks like when fetched later — no
+ * per-question breakdown, since that's never persisted. */
+export interface QuizAttemptSummary {
+  id: string;
+  score: number;
+  totalMarks: number;
+  attemptedAt: string;
 }

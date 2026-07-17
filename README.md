@@ -154,6 +154,7 @@ architectural summary every future module should be checked against.
 | [`docs/13-module-4a-notes.md`](docs/13-module-4a-notes.md) | Module 4A payments design decisions and what was actually built/tested |
 | [`docs/14-module-4b-notes.md`](docs/14-module-4b-notes.md) | Module 4B payment management design decisions and what was actually built/tested |
 | [`docs/15-module-5-notes.md`](docs/15-module-5-notes.md) | Module 5 device management design decisions and what was actually built/tested |
+| [`docs/16-module-6-notes.md`](docs/16-module-6-notes.md) | Module 6 student quiz attempt flow design decisions and what was actually built/tested |
 
 ## Tech stack (locked for V1)
 
@@ -349,3 +350,11 @@ login limit that Module 2 already mostly built: a My Devices page, the
 ability to remove a specific other device (revoking its tokens), and a
 confirmed bug fix so a naturally-expired session no longer counts
 against the limit forever. See `docs/15-module-5-notes.md`.
+
+**Module 6 (Student Quiz Attempt Flow) is complete and pending your
+approval.** Completes quiz functionality Module 3B only built the
+teacher-authoring half of: students take a quiz from the existing Course
+Player, submit answers scored entirely server-side, and view their most
+recent attempt. Zero schema changes — multiple attempts are allowed,
+matching what the existing `QuizAttempt` model was actually built to
+support. See `docs/16-module-6-notes.md`.
